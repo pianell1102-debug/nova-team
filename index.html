@@ -240,9 +240,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbwgxdjOpoHluewRxf_KsE2s9vK9CfpYmq3es1elDIzl-aiydzW4BSgGVn4-it9yXPrd/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbz0cTfuxvRPsT9jIKebCIJst1aUO5EO8ZlH16Yy4HCszcUjfkuPqqP1CRlgTlxo4LHP5Q/exec';
 var POLL_MS=45000;
-var APP_VER='v2.3 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v2.4 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -280,7 +280,7 @@ function mapLink(u){var s=safeUrl(u);return s?'<a class="maplink" href="'+esc(s)
 /* ---------- 상태 ---------- */
 var S={members:{},events:{},votes:{},notices:{},reads:{},alerts:{},places:{},posts:{},results:{}};
 var ui={view:'list',calMonth:'',calSel:'',rfilter:'all',bcat:'전체',files:{keep:[],add:[]},tab:'events',filter:'all',showPast:false,af:'all',nf:'all',sd:null,open:{},form:null,authMode:'login',confirm:null,dlTouched:false};
-var me=null,myRole='member',amOwner=false,token=null,loaded=false,netErr=false;
+var myInit=false,me=null,myRole='member',amOwner=false,token=null,loaded=false,netErr=false;
 var pending=0,syncing=false,again=false,toastTimer=null;
 var canWrite=true;
 
@@ -338,7 +338,7 @@ function applySync(j){
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
   serverVer=(j.cfg&&j.cfg.ver)||'';
   oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings);
-  me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;loaded=true;netErr=false;
+  me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;myInit=!!j.me.init;loaded=true;netErr=false;
 }
 async function syncNow(){
   if(!token)return;
@@ -466,10 +466,10 @@ function paintApp(){
   var h=document.getElementById('hdr');if(!h)return;
   function tab(k,l,b){return '<button class="tab" role="tab" data-act="tab" data-t="'+k+'" aria-selected="'+(ui.tab===k)+'">'+l+(b?'<span class="badge">'+b+'</span>':'')+'</button>';}
   h.innerHTML='<header class="top"><div class="wrap"><div class="top-in">'+logo()+
-    '<div class="who"><span>'+esc(nick(me))+'</span><button class="linkbtn" data-act="logout">로그아웃</button></div></div>'+
+    '<div class="who"><span>'+esc(nick(me))+'</span><button class="linkbtn" data-act="pinform">비밀번호 변경</button><button class="linkbtn" data-act="logout">로그아웃</button></div></div>'+
     '<div class="tabs" role="tablist">'+tab('events','일정',needCountNow())+tab('results','결과',0)+tab('notices','공지',unreadNotices())+tab('alerts','알림',alertTotal())+tab('board','전술',0)+tab('team','팀',0)+(canManage()?tab('settings','설정',0):'')+'</div></div></header>';
   var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요(지금 서버: '+(serverVer||'버전 표시 없음')+'). Apps Script에 최신 Code.gs 전체를 붙여넣고 배포 관리 → 연필 → 새 버전으로 배포해 주세요. (설정 탭·읽음 처리 등 새 기능이 동작하지 않아요)':'');
-  document.getElementById('banner').innerHTML=msg?'<div class="banner"><div class="wrap">'+esc(msg)+'</div></div>':'';
+  document.getElementById('banner').innerHTML=msg?'<div class="banner"><div class="wrap">'+esc(msg)+'</div></div>':(myInit?'<div class="banner"><div class="wrap"><button class="linkbtn" data-act="pinform" style="font-weight:700">초기 비밀번호(1234)를 쓰고 있어요. 여기를 눌러 내 비밀번호로 바꿔 주세요 ›</button></div></div>':'');
   document.getElementById('list').innerHTML=ui.tab==='events'?(ui.view==='cal'?calendarPage():eventsHTML()):ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():ui.tab==='results'?resultsHTML():(ui.tab==='settings'&&canManage())?settingsHTML():teamHTML();
   decorate();
   var vel=document.getElementById('ver');if(vel)vel.textContent='화면 '+APP_VER+' · 서버 '+(serverVer||'예전 버전')+(oldServer?' (서버 업데이트 필요)':'');
@@ -684,10 +684,11 @@ function teamHTML(){
   out+='<div class="head-row"><h2>멤버</h2><span class="none">전체 '+ids.length+'명 · 마스터·관리자 '+mgrN+'명</span></div><div class="card">';
   ids.forEach(function(id){
     var r=roleOf(id),self=id===me;
-    out+='<div class="mem"><span class="nm">'+esc(nick(id))+(self?' (나)':'')+'</span>'+(r==='master'?'<span class="role m">마스터</span>':r==='admin'?'<span class="role">관리자</span>':'');
+    out+='<div class="mem"><span class="nm">'+esc(nick(id))+(self?' (나)':'')+(S.members[id].init?' <small class="pmemo">초기 비밀번호 사용 중</small>':'')+'</span>'+(r==='master'?'<span class="role m">마스터</span>':r==='admin'?'<span class="role">관리자</span>':'');
     if(canWrite){
       if(isMaster()&&r!=='master')out+='<button class="btn sm" data-act="toggleadmin" data-m="'+esc(id)+'">'+(r==='admin'?'관리자 해제':'관리자 지정')+'</button>';
       if(isOwner()&&r!=='admin'&&!S.members[id].owner)out+='<button class="btn sm" data-act="togglemaster" data-m="'+esc(id)+'">'+(r==='master'?'마스터 해제':'마스터 지정')+'</button>';
+      if(isMaster()&&!self&&(r!=='master'||isOwner())&&!S.members[id].owner)out+='<button class="btn sm" data-act="resetpin" data-m="'+esc(id)+'">'+(ui.confirm==='rp:'+id?'한 번 더 눌러 1234로':'비번 초기화')+'</button>';
       if(isMaster()&&!self&&(r!=='master'||isOwner())&&!S.members[id].owner)out+='<button class="btn sm danger" data-act="delmember" data-m="'+esc(id)+'">'+(ui.confirm==='mb:'+id?'정말 삭제':'삭제')+'</button>';
     }
     out+='</div>';
@@ -736,6 +737,10 @@ function formHTML(){
       '<label class="field">지도 링크 (선택)<input class="inp" id="fp-url" type="url" inputmode="url" placeholder="https://" value="'+esc(p.url||'')+'"></label>'+
       '<label class="field">메모 (선택, 주차·연락처·주의사항 등)<textarea class="inp" id="fp-memo" maxlength="200">'+esc(p.memo||'')+'</textarea></label>'+actions()+'</form></div>';
   }
+  if(f.kind==='pin')return '<div class="card"><h2>비밀번호 변경</h2><form id="pnForm" class="form" novalidate>'+
+    '<label class="field">현재 비밀번호<input class="inp" id="fpn-old" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="current-password"></label>'+
+    '<label class="field">새 비밀번호 (숫자 4자리)<input class="inp" id="fpn-new" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="new-password"></label>'+
+    '<label class="field">새 비밀번호 확인<input class="inp" id="fpn-new2" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="new-password"></label>'+actions()+'</form></div>';
   if(f.kind==='post')return boardFormHTML();
   if(f.kind==='result')return resultFormHTML();
   if(f.kind==='evlinks')return evLinksFormHTML();
@@ -775,6 +780,16 @@ async function saveNotice(){
   var title=val('fn-title').trim(),body=val('fn-body').trim();
   if(!title||!body){err('제목과 내용을 입력해 주세요.');return;}
   if(await act('saveNotice',{id:ui.form.id||null,title:title,body:body,pinned:!!document.getElementById('fn-pin').checked})){ui.form=null;paintForm();paintApp();toast('공지를 저장했어요.');}
+}
+async function savePin(){
+  var err=function(m){var x=document.getElementById('formErr');if(x)x.textContent=m;};
+  var o=val('fpn-old'),n=val('fpn-new'),n2=val('fpn-new2');
+  if(!/^\d{4}$/.test(o)){err('현재 비밀번호 숫자 4자리를 입력해 주세요.');return;}
+  if(!/^\d{4}$/.test(n)){err('새 비밀번호는 숫자 4자리예요.');return;}
+  if(n!==n2){err('새 비밀번호 확인이 달라요.');return;}
+  if(n==='1234'){err('초기 비밀번호와 다른 번호로 정해 주세요.');return;}
+  if(n===o){err('현재 비밀번호와 다른 번호로 정해 주세요.');return;}
+  if(await act('changePin',{old:o,pin:n})){ui.form=null;paintForm();paintApp();toast('비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요.');}
 }
 async function savePlace(){
   var err=function(m){var x=document.getElementById('formErr');if(x)x.textContent=m;};
@@ -1134,6 +1149,7 @@ root.addEventListener('submit',function(ev){
   else if(id==='evForm'){var o=collectEvent();if(o){ui.form.pending=o;paintForm();}}
   else if(id==='ntForm')saveNotice();
   else if(id==='plForm')savePlace();
+  else if(id==='pnForm')savePin();
   else if(id==='rsForm')saveResult();
   else if(id==='evlForm')saveEvLinks();
   else if(id==='bdForm')saveBoard();
@@ -1262,6 +1278,12 @@ root.addEventListener('click',async function(ev){
     case 'toggleadmin':case 'togglemaster':{
       var cr=roleOf(d.m),nr=a==='toggleadmin'?(cr==='admin'?'member':'admin'):(cr==='master'?'member':'master');
       await act('setRole',{m:d.m,role:nr});
+      paintApp();break;
+    }
+    case 'pinform':ui.form={kind:'pin'};paintForm();break;
+    case 'resetpin':{
+      var kr='rp:'+d.m;if(prev!==kr){ui.confirm=kr;paintApp();break;}
+      if(await act('resetPin',{m:d.m}))toast('비밀번호를 1234로 되돌렸어요. 로그인 후 바꾸도록 안내해 주세요.');
       paintApp();break;
     }
     case 'delmember':{

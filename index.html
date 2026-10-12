@@ -240,9 +240,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbz0cTfuxvRPsT9jIKebCIJst1aUO5EO8ZlH16Yy4HCszcUjfkuPqqP1CRlgTlxo4LHP5Q/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbwuZEzsYzrZVA7ojurtiV9JNt_A7DnQInOMVxmKzMgbkOMUpS0a4uhtix2wugXoYInGzQ/exec';
 var POLL_MS=45000;
-var APP_VER='v2.4 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v2.5 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -693,7 +693,9 @@ function teamHTML(){
     }
     out+='</div>';
   });
-  out+='</div><p class="hint">일정·공지·장소는 마스터와 관리자가 관리해요. 관리자는 마스터가 지정하고, 마스터는 페이지 소유자가 지정해요.</p>';
+  out+='</div>';
+  if(isMaster())out+='<div class="card" style="margin-top:12px"><h3 class="nt-title">팀원 일괄 등록</h3><p class="hintline">팀 명단(활동·휴식 멤버)에서 아직 없는 사람을 비밀번호 <b>1234</b>로 한 번에 등록해요. 이미 있는 사람은 그대로 둬요. 몇 번 눌러도 중복되지 않아요.</p><div class="ev-foot"><button class="btn sm'+(ui.confirm==="seed"?' danger armed':'')+'" data-act="seedmembers">'+(ui.confirm==="seed"?'한 번 더 눌러 등록':'명단 일괄 등록')+'</button></div></div>';
+  out+='<p class="hint">일정·공지·장소는 마스터와 관리자가 관리해요. 관리자는 마스터가 지정하고, 마스터는 페이지 소유자가 지정해요.</p>';
   return out;
 }
 
@@ -1281,6 +1283,12 @@ root.addEventListener('click',async function(ev){
       paintApp();break;
     }
     case 'pinform':ui.form={kind:'pin'};paintForm();break;
+    case 'seedmembers':{
+      if(prev!=='seed'){ui.confirm='seed';paintApp();break;}
+      var cnt0=Object.keys(S.members).length;
+      if(await act('seedMembers',{})){var add=Object.keys(S.members).length-cnt0;toast(add>0?add+'명을 비밀번호 1234로 등록했어요.':'새로 등록할 사람이 없어요. 모두 이미 등록돼 있어요.');}
+      paintApp();break;
+    }
     case 'resetpin':{
       var kr='rp:'+d.m;if(prev!==kr){ui.confirm=kr;paintApp();break;}
       if(await act('resetPin',{m:d.m}))toast('비밀번호를 1234로 되돌렸어요. 로그인 후 바꾸도록 안내해 주세요.');

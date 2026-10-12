@@ -111,7 +111,7 @@ a{color:inherit}
 .inp{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid #CFCFCF;border-radius:8px;padding:10px 12px}
 textarea.inp{min-height:88px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .opt{position:relative;display:block}
 .opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
 .opt span{display:block;text-align:center;padding:10px;border:1px solid var(--line);border-radius:8px;font-weight:600;background:var(--surface)}
@@ -170,6 +170,7 @@ var WD=['일','월','화','수','목','금','토'];
 var API_URL='https://script.google.com/macros/s/AKfycbze4QhvcDSTfDHmXtaL-mKG2l1IVNEzYXrhYn-yV-KB_1tq7I3SaaxHhozFjr9lDW1nhg/exec';
 var POLL_MS=45000;
 var COLS=['members','events','votes','notices','reads','alerts','places','posts'];
+var ETYPES=['훈련','매치','대회','모임'];
 var BCATS=['포메이션','세트피스','로테이션','상대 분석','기타'];
 var MAX_FILES=8,MAX_FILE=5*1024*1024;
 var boardWrite='manager';
@@ -276,12 +277,12 @@ function renderAuth(){
   '<div class="seg" role="group" aria-label="로그인 방식"><button type="button" data-act="authmode" data-m="login" aria-pressed="'+(!su)+'">로그인</button><button type="button" data-act="authmode" data-m="signup" aria-pressed="'+su+'">처음이에요</button></div>'+
   '<form id="authForm" class="form" novalidate>'+
   '<div class="row2"><label class="field">출생연도 2자리<input class="inp" id="f-yy" inputmode="numeric" maxlength="2" placeholder="00" data-digits autocomplete="off"></label>'+
-  '<label class="field">이름<input class="inp" id="f-name" maxlength="8" placeholder="김진영" autocomplete="off"></label></div>'+
+  '<label class="field">이름<input class="inp" id="f-name" maxlength="8" placeholder="홍길동" autocomplete="off"></label></div>'+
   '<label class="field">비밀번호 숫자 4자리<input class="inp" id="f-pin" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="'+(su?'new-password':'current-password')+'"></label>'+
   (su?'<label class="field">비밀번호 확인<input class="inp" id="f-pin2" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="new-password"></label><label class="field">팀 가입 코드 (운영진에게 받은 코드)<input class="inp" id="f-code" type="text" maxlength="40" autocomplete="off"></label>':'')+
   '<p id="authErr" class="err" role="alert"></p>'+
   '<button class="btn pri" type="submit">'+(su?'가입하고 시작':'로그인')+'</button></form>'+
-  '<p class="hint">닉네임은 <b>00 김진영</b>처럼 출생연도 2자리와 이름으로 만들어져요. 같은 닉네임은 한 번만 가입할 수 있어요.</p></main>';
+  '<p class="hint">닉네임은 <b>00 홍길동</b>처럼 출생연도 2자리와 이름으로 만들어져요. 같은 닉네임은 한 번만 가입할 수 있어요.</p></main>';
   updateStatus();
 }
 async function doAuth(){
@@ -396,14 +397,14 @@ function eventsHTML(){
   var past=all.filter(function(e){return e.date<today;}).sort(function(a,b){return evKey(a)<evKey(b)?1:-1;});
   var f=ui.filter;
   var shown=up.filter(function(e){return f==='all'||(f==='need'?needsVote(e):e.type===f);});
-  var cnt={all:up.length,'훈련':up.filter(function(e){return e.type==='훈련';}).length,'매치':up.filter(function(e){return e.type==='매치';}).length,need:up.filter(needsVote).length};
+  var cnt={all:up.length,need:up.filter(needsVote).length};ETYPES.forEach(function(t){cnt[t]=up.filter(function(e){return e.type===t;}).length;});
   var un=unreadNotices(),ua=alertTotal(),out='';
   if(ua)out+='<button class="note-banner" data-act="tab" data-t="alerts">새 알림 '+ua+'건 ›</button>';
   if(un)out+='<button class="note-banner" data-act="tab" data-t="notices">읽지 않은 공지 '+un+'건 ›</button>';
   out+='<div class="head-row"><h2>다가오는 일정</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newevent">+ 일정 등록</button>':'')+'</div>';
-  out+='<div class="chips" role="group" aria-label="일정 필터">'+[['all','전체'],['훈련','훈련'],['매치','매치'],['need','투표 필요']].map(function(c){return '<button class="chip" data-act="filter" data-f="'+c[0]+'" aria-pressed="'+(f===c[0])+'">'+c[1]+'<i>'+cnt[c[0]]+'</i></button>';}).join('')+'</div>';
+  out+='<div class="chips" role="group" aria-label="일정 필터">'+[['all','전체']].concat(ETYPES.map(function(t){return [t,t];}),[['need','투표 필요']]).map(function(c){return '<button class="chip" data-act="filter" data-f="'+c[0]+'" aria-pressed="'+(f===c[0])+'">'+c[1]+'<i>'+cnt[c[0]]+'</i></button>';}).join('')+'</div>';
   if(!up.length){
-    out+='<div class="card empty"><b>등록된 다가오는 일정이 없어요</b>'+(canEditData()?'위의 일정 등록으로 첫 훈련이나 매치를 추가해 보세요.':'관리자가 일정을 등록하면 여기에 날짜순으로 보여요.')+'</div>';
+    out+='<div class="card empty"><b>등록된 다가오는 일정이 없어요</b>'+(canEditData()?'위의 일정 등록으로 첫 일정을 추가해 보세요.':'관리자가 일정을 등록하면 여기에 날짜순으로 보여요.')+'</div>';
   }else if(!shown.length){
     out+='<div class="card empty"><b>조건에 맞는 일정이 없어요</b>다른 필터를 눌러 보세요.</div>';
   }else{
@@ -434,7 +435,7 @@ function evCard(e,t,past){
   var vb=[['Y','참석'],['N','불참'],['M','미정']].map(function(v){
     return '<button class="vbtn" data-act="vote" data-e="'+esc(e.id)+'" data-s="'+v[0]+'" aria-pressed="'+(mine===v[0])+'"'+(lock?' disabled':'')+'>'+v[1]+'</button>';
   }).join('');
-  var h='<article class="card ev'+(e.type==='매치'?' is-match':'')+(past?' is-past':'')+'">'+
+  var h='<article class="card ev'+(e.type==='매치'||e.type==='대회'?' is-match':'')+(past?' is-past':'')+'">'+
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
     '<div><div class="ev-top"><span class="tag">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&!mine&&!lock?'<span class="need">투표 필요</span>':'')+'</div>'+
     '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p></div>'+
@@ -557,13 +558,13 @@ function formHTML(){
         '<p id="formErr" class="err" role="alert"></p><div class="form-actions"><button type="button" class="btn" data-act="editback">수정하기</button><button type="button" class="btn pri" data-act="commitevent">맞아요, '+(old?'저장':'등록')+'</button></div></div>';
     }
     return '<div class="card"><h2>'+(f.id?'일정 수정':'일정 등록')+'</h2><form id="evForm" class="form" novalidate>'+
-    '<div class="opts"><label class="opt"><input type="radio" name="fe-type" value="훈련"'+(ty==='훈련'?' checked':'')+'><span>훈련</span></label><label class="opt"><input type="radio" name="fe-type" value="매치"'+(ty==='매치'?' checked':'')+'><span>매치</span></label></div>'+
+    '<div class="opts">'+ETYPES.map(function(t){return '<label class="opt"><input type="radio" name="fe-type" value="'+t+'"'+(ty===t?' checked':'')+'><span>'+t+'</span></label>';}).join('')+'</div>'+
     '<div class="row2"><label class="field">날짜<input class="inp" id="fe-date" type="date" value="'+esc(e.date||'')+'"></label><label class="field">시간<input class="inp" id="fe-time" type="time" value="'+esc(e.time||'')+'"></label></div>'+
     '<label class="field">저장된 장소에서 고르기<select class="inp" id="fe-pick">'+placeOptions(e.place)+'</select></label>'+
     '<label class="field">장소<input class="inp" id="fe-place" type="text" maxlength="60" value="'+esc(e.place||'')+'"></label>'+
     '<label class="field">세부 장소 (선택, 예: B코트·3번 출입구)<input class="inp" id="fe-detail" type="text" maxlength="60" value="'+esc(e.detail||'')+'"></label>'+
     '<label class="field">지도 링크 (선택)<input class="inp" id="fe-map" type="url" inputmode="url" placeholder="https://" value="'+esc(e.map||'')+'"></label>'+
-    '<label class="field">제목 (비우면 훈련/매치로 표시)<input class="inp" id="fe-title" type="text" maxlength="60" value="'+esc(e.title||'')+'"></label>'+
+    '<label class="field">제목 (비우면 종류로 표시)<input class="inp" id="fe-title" type="text" maxlength="60" value="'+esc(e.title||'')+'"></label>'+
     '<label class="field">투표 마감일 (날짜를 고르면 7일 전으로 채워져요)<input class="inp" id="fe-deadline" type="date" value="'+esc(e.deadline||'')+'"></label>'+
     '<label class="field">메모 (선택)<textarea class="inp" id="fe-memo" maxlength="300">'+esc(e.memo||'')+'</textarea></label>'+
     actions('<button type="submit" class="btn pri">확인 화면으로</button>')+'</form></div>';

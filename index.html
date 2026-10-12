@@ -124,6 +124,12 @@ a{color:inherit}
 .mem .nm{flex:1;min-width:120px;font-weight:500;overflow-wrap:anywhere}
 .role{font-size:12px;font-weight:600;border:1px solid var(--ink);border-radius:999px;padding:1px 8px}
 .role.m{background:var(--ink);color:#fff}
+.st{font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.st.rest{background:#e8eefc;color:#1e40af}
+.st.injured{background:#fde8e8;color:#b91c1c}
+.stsel{display:inline-flex;gap:4px}
+.stsel .btn[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+@media (max-width:560px){.stsel{flex:1 1 100%}.stsel .btn{flex:1}}
 
 /* 폼 */
 .form{display:grid;gap:12px;margin-top:16px}
@@ -279,9 +285,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbxYlFUUXlrbPntlYOyPBaQjwhgfykL-jiHITOXhToZ9R6njfh83HstQaOy-sAHU01ghig/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbx9UbAJhEdkLEWhv_ikWipDNWLwtSYgjbF4eN-7EHRc3pkhsIojBXwX--dbKmhJbpcR/exec';
 var POLL_MS=45000;
-var APP_VER='v2.8 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v2.9 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -325,6 +331,10 @@ var canWrite=true;
 
 function nick(id){var m=S.members[id];return m?m.name:'탈퇴한 멤버';}
 function memberCount(){return Object.keys(S.members).length;}
+function stOf(id){var m=S.members[id];return m&&(m.st==='rest'||m.st==='injured')?m.st:'';}
+function stLabel(id){var t=stOf(id);return t==='rest'?'휴식':t==='injured'?'부상':'';}
+function stBadge(id){var t=stOf(id);return t?'<span class="st '+t+'">'+stLabel(id)+'</span>':'';}
+function activeIds(){return Object.keys(S.members).filter(function(id){return !stOf(id);});}
 function roleOf(id){var m=S.members[id];return m?(m.role||'member'):'member';}
 /* 소유자: 마스터를 지정하는 사람. 마스터: 관리자를 지정하는 사람. 관리자: 일정·공지·장소를 관리하는 사람 */
 function isOwner(){return amOwner;}
@@ -376,7 +386,7 @@ function applySync(j){
   COLS.forEach(function(c){S[c]=j.data[c]||{};});
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
   serverVer=(j.cfg&&j.cfg.ver)||'';
-  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings);
+  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings&&j.cfg.status);
   me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;myInit=!!j.me.init;loaded=true;netErr=false;
 }
 async function syncNow(){
@@ -436,7 +446,7 @@ async function doAuth(){
 
 /* ---------- 계산 ---------- */
 function locked(e){return !canManage()&&todayStr()>dlEff(e);}
-function needsVote(e){return e.date>=todayStr()&&!S.votes[e.id+'_'+me]&&!locked(e)&&canWrite;}
+function needsVote(e){return !stOf(me)&&e.date>=todayStr()&&!S.votes[e.id+'_'+me]&&!locked(e)&&canWrite;}
 function tallyAll(){
   var t={};
   Object.keys(S.votes).forEach(function(k){
@@ -465,8 +475,8 @@ function reminders(all){
   var vote=[],eve=[],dis=disSet();
   up.forEach(function(e){
     var mine=(S.votes[e.id+'_'+me]||{}).s,n=dayDiff(dlEff(e)),d=dayDiff(e.date);
-    if(!mine&&n>=0&&n<=cfgS().remindDays&&canWrite){var kv='v'+e.id;if(all||!dis[kv])vote.push({e:e,n:n,k:kv,dis:!!dis[kv]});}
-    if(d<=cfgS().eveDays&&mine!=='N'){var ke='e'+e.id+'_'+d;if(all||!dis[ke])eve.push({e:e,d:d,k:ke,dis:!!dis[ke]});}
+    if(!mine&&!stOf(me)&&n>=0&&n<=cfgS().remindDays&&canWrite){var kv='v'+e.id;if(all||!dis[kv])vote.push({e:e,n:n,k:kv,dis:!!dis[kv]});}
+    if(d<=cfgS().eveDays&&mine!=='N'&&!(stOf(me)&&mine!=='Y')){var ke='e'+e.id+'_'+d;if(all||!dis[ke])eve.push({e:e,d:d,k:ke,dis:!!dis[ke]});}
   });
   return {vote:vote,eve:eve};
 }
@@ -568,7 +578,7 @@ function eventsHTML(){
 }
 function evCard(e,t,past){
   var d=parseD(e.date),diff=dayDiff(e.date),tl=t[e.id]||{Y:[],N:[],M:[]};
-  var total=memberCount(),done=tl.Y.length+tl.N.length+tl.M.length,no=Math.max(0,total-done);
+  var vset={};tl.Y.concat(tl.N,tl.M).forEach(function(id){vset[id]=1;});var actIds=activeIds(),total=actIds.length+Object.keys(vset).filter(function(id){return stOf(id);}).length,done=tl.Y.length+tl.N.length+tl.M.length,no=actIds.filter(function(id){return !vset[id];}).length;
   var mine=(S.votes[e.id+'_'+me]||{}).s;
   var lock=past||!canWrite||locked(e);
   var dd=past?'':(diff===0?'오늘':diff===1?'내일':'D-'+diff);
@@ -582,7 +592,7 @@ function evCard(e,t,past){
   }).join('');
   var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+'">'+
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
-    '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&!mine&&!lock?'<span class="need">투표 필요</span>':'')+'</div>'+
+    '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&!mine&&!lock&&!stOf(me)?'<span class="need">투표 필요</span>':'')+'</div>'+
     '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p>'+resLine(e)+'</div>'+
     '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+
     '<div class="sum"><div class="bar" role="img" aria-label="참석 '+tl.Y.length+', 불참 '+tl.N.length+', 미정 '+tl.M.length+', 미응답 '+no+'">'+
@@ -590,9 +600,9 @@ function evCard(e,t,past){
     '<div class="counts"><span>참석 <b>'+tl.Y.length+'</b></span><span>불참 <b>'+tl.N.length+'</b></span><span>미정 <b>'+tl.M.length+'</b></span><span>미응답 <b>'+no+'</b></span></div></div>';
   if(open){
     var voted={};tl.Y.concat(tl.N,tl.M).forEach(function(id){voted[id]=1;});
-    var rest=Object.keys(S.members).filter(function(id){return !voted[id];});
-    var grp=function(c,l,ids){return '<div><div class="grp-h '+c+'">'+l+' '+ids.length+'</div><div class="pills">'+(ids.length?sortIds(ids).map(function(id){return '<span class="pill">'+esc(nick(id))+'</span>';}).join(''):'<span class="none">없음</span>')+'</div></div>';};
-    h+='<div class="names">'+grp('y','참석',tl.Y)+grp('n','불참',tl.N)+grp('m','미정',tl.M)+grp('x','미응답',rest)+'</div>';
+    var rest=activeIds().filter(function(id){return !voted[id];}),away=Object.keys(S.members).filter(function(id){return stOf(id)&&!voted[id];});
+    var grp=function(c,l,ids){return '<div><div class="grp-h '+c+'">'+l+' '+ids.length+'</div><div class="pills">'+(ids.length?sortIds(ids).map(function(id){return '<span class="pill">'+esc(nick(id))+stBadge(id)+'</span>';}).join(''):'<span class="none">없음</span>')+'</div></div>';};
+    h+='<div class="names">'+grp('y','참석',tl.Y)+grp('n','불참',tl.N)+grp('m','미정',tl.M)+grp('x','미응답',rest)+(away.length?grp('x','휴식·부상 (투표 안 함)',away):'')+'</div>';
   }
   h+='<div class="ev-foot"><button class="btn sm" data-act="expand" data-e="'+esc(e.id)+'" aria-expanded="'+open+'">'+(open?'명단 접기':'명단 보기')+'</button>';
   if(mg&&!past)h+='<button class="btn sm" data-act="sharevote" data-e="'+esc(e.id)+'">미응답 안내 문구</button>';
@@ -724,12 +734,13 @@ function teamHTML(){
     out+='</div>';
   }
   var memOpen=!!ui.memOpen;
-  out+='<div class="head-row"><button class="memtoggle" data-act="togglemem" aria-expanded="'+memOpen+'"><h2>멤버<span class="chev">›</span></h2><span class="none">전체 '+ids.length+'명 · 마스터·관리자 '+mgrN+'명 · '+(memOpen?'접기':'펼치기')+'</span></button></div>';
+  out+='<div class="head-row"><button class="memtoggle" data-act="togglemem" aria-expanded="'+memOpen+'"><h2>멤버<span class="chev">›</span></h2><span class="none">전체 '+ids.length+'명 · 마스터·관리자 '+mgrN+'명'+(ids.filter(stOf).length?' · 휴식 '+ids.filter(function(i){return stOf(i)==='rest';}).length+' · 부상 '+ids.filter(function(i){return stOf(i)==='injured';}).length:'')+' · '+(memOpen?'접기':'펼치기')+'</span></button></div>';
   if(memOpen)out+='<div class="card">';
   (memOpen?ids:[]).forEach(function(id){
     var r=roleOf(id),self=id===me;
-    out+='<div class="mem"><span class="nm">'+esc(nick(id))+(self?' (나)':'')+(S.members[id].init?' <small class="pmemo">초기 비밀번호 사용 중</small>':'')+'</span>'+(r==='master'?'<span class="role m">마스터</span>':r==='admin'?'<span class="role">관리자</span>':'');
+    out+='<div class="mem"><span class="nm">'+esc(nick(id))+(self?' (나)':'')+stBadge(id)+(S.members[id].init?' <small class="pmemo">초기 비밀번호 사용 중</small>':'')+'</span>'+(r==='master'?'<span class="role m">마스터</span>':r==='admin'?'<span class="role">관리자</span>':'');
     if(canWrite){
+      if(canManage())out+='<span class="stsel" role="group" aria-label="상태">'+[['','활동'],['rest','휴식'],['injured','부상']].map(function(o){return '<button class="btn sm" data-act="setst" data-m="'+esc(id)+'" data-st="'+(o[0]||'active')+'" aria-pressed="'+(stOf(id)===o[0])+'">'+o[1]+'</button>';}).join('')+'</span>';
       if(isMaster()&&r!=='master')out+='<button class="btn sm" data-act="toggleadmin" data-m="'+esc(id)+'">'+(r==='admin'?'관리자 해제':'관리자 지정')+'</button>';
       if(canManage()&&!self&&!S.members[id].owner&&(r==='member'||(isMaster()&&(r!=='master'||isOwner()))))out+='<button class="btn sm" data-act="resetpin" data-m="'+esc(id)+'">'+(ui.confirm==='rp:'+id?'한 번 더 눌러 1234로':'비번 초기화')+'</button>';
       if(isMaster()&&!self&&(r!=='master'||isOwner())&&!S.members[id].owner)out+='<button class="btn sm danger" data-act="delmember" data-m="'+esc(id)+'">'+(ui.confirm==='mb:'+id?'정말 삭제':'삭제')+'</button>';
@@ -1173,7 +1184,7 @@ function viewHead(title){
 }
 function shareVoteText(e){
   var tl=(tallyAll()[e.id])||{Y:[],N:[],M:[]},voted={};tl.Y.concat(tl.N,tl.M).forEach(function(id){voted[id]=1;});
-  var rest=sortIds(Object.keys(S.members).filter(function(id){return !voted[id];})).map(nick);
+  var rest=sortIds(activeIds().filter(function(id){return !voted[id];})).map(nick);
   return '[NOVA] '+fmtDT(e)+' '+(e.title||e.type)+(placeFull(e)?' · '+placeFull(e):'')+'\n참석 투표는 '+fmtMD(dlEff(e))+'에 마감돼요.\n'+(rest.length?'아직 투표 안 한 사람: '+rest.join(', '):'모두 투표했어요.');
 }
 function shareAlertText(a){
@@ -1320,6 +1331,7 @@ root.addEventListener('click',async function(ev){
       if(await act('delPlace',{id:d.p}))toast('장소를 삭제했어요.');
       paintApp();break;
     }
+    case 'setst':{if(await act('setStatus',{m:d.m,st:d.st}))toast(nick(d.m)+' 님을 '+(d.st==='rest'?'휴식':d.st==='injured'?'부상':'활동')+' 상태로 바꿨어요.');paintApp();break;}
     case 'togglemem':ui.memOpen=!ui.memOpen;paintApp();break;
     case 'toggleadmin':case 'togglemaster':{
       var cr=roleOf(d.m),nr=a==='toggleadmin'?(cr==='admin'?'member':'admin'):(cr==='master'?'member':'master');

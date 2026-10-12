@@ -63,6 +63,7 @@ a{color:inherit}
 .ev .ev-date{border-color:var(--tc);color:var(--tc)}
 .ev .tag.ty{color:var(--tc);border-color:var(--tc);background:var(--tb)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--tc);margin-right:6px;vertical-align:baseline}
+.chip .dot{background:var(--tc);width:9px;height:9px;margin-right:6px}
 .opt input:checked+span.ty{background:var(--tc);border-color:var(--tc);color:#fff}
 .opt span.ty{border-color:var(--tc);color:var(--tc)}
 .opt input:checked+span.ty{color:#fff}
@@ -161,7 +162,56 @@ textarea.inp{min-height:88px;resize:vertical}
 .flist{display:grid;gap:6px;margin-top:8px}
 .frow{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
 .frow span{overflow-wrap:anywhere;font-size:14px}
-.tab{font-size:14px}
+.tab{font-size:13px;padding-inline:0}
+.resline{display:block;margin-top:4px;padding:0;border:0;background:none;font:inherit;font-size:13px;font-weight:700;color:var(--tc);text-align:left;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;text-align:center}
+.stats b{display:block;font-family:var(--font-display);font-size:24px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--muted)}
+.rk{width:22px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rs{border-left:5px solid var(--tc);display:grid;gap:8px}
+.score{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.score .num{font-family:var(--font-display);font-size:32px;font-variant-numeric:tabular-nums;line-height:1}
+.score .colon{color:var(--muted);font-size:24px}
+.score .side{font-weight:600;overflow-wrap:anywhere}
+.oc{margin-left:auto;font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;border:1px solid var(--ink)}
+.oc-w{background:var(--ink);color:#fff}.oc-d{border-color:var(--line);color:var(--muted)}.oc-l{border-color:var(--line);color:var(--ink)}
+.sc-line{font-size:14px;overflow-wrap:anywhere}
+.scrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.scrow .sc-m{flex:1 1 150px;min-width:0}
+.scrow .sc-name{flex:1 1 130px;min-width:0}
+.scrow .sc-n{flex:0 0 64px;width:64px}
+.sclist{display:grid;gap:8px;margin-top:6px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.cal-h b{font-size:17px}
+.cal-sub{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-top:8px}
+.cwd{text-align:center;font-size:12px;color:var(--muted);padding:2px 0}
+.cwd.sun{color:#C0392B}
+.cell{min-height:64px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:3px 2px 2px;display:flex;flex-direction:column;gap:2px;font:inherit;text-align:center;cursor:pointer;min-width:0}
+.cell.blank{border:0;background:none;cursor:default}
+.cell .cn{font-size:12px;font-weight:600;align-self:flex-start;padding-left:3px;line-height:20px}
+.cell.sun .cn{color:#C0392B}
+.cell.today .cn{background:var(--ink);color:#fff;border-radius:999px;width:20px;padding:0;text-align:center}
+.cell.sel{outline:2px solid var(--ink);outline-offset:-1px}
+.cc{display:block;font-style:normal;font-size:10px;font-weight:700;line-height:16px;border-radius:4px;color:#fff;background:var(--tc);border:1px solid var(--tc);white-space:nowrap;overflow:hidden}
+.cc.need{background:var(--surface);color:var(--tc)}
+.more{font-style:normal;font-size:10px;color:var(--muted)}
+.vlinks{display:flex;flex-wrap:wrap;gap:6px}
+.vlink{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;background:var(--surface);max-width:100%;overflow-wrap:anywhere}
+.rg{border-left:5px solid var(--tc);display:grid;gap:8px;margin-top:12px}
+.rg-sum{font-size:14px;font-weight:600;color:var(--tc)}
+.game{border-top:1px dashed var(--line);padding-top:10px;display:grid;gap:8px}
+.g-top b{font-size:14px}
+.plist{display:grid;gap:4px}
+.prow{display:flex;align-items:baseline;gap:8px;font-size:14px;flex-wrap:wrap}
+.prow .pl{min-width:52px;color:var(--muted);font-weight:600}
+.prow .ps{font-variant-numeric:tabular-nums}
+.prow .pscr{color:var(--muted);overflow-wrap:anywhere}
+.pb{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;margin:0;min-width:0}
+.pb-h{display:flex;gap:6px;align-items:center}.pb-h .p-label{flex:1;min-width:0}
+.qrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rtotal{font-weight:700;font-variant-numeric:tabular-nums}
+.inp.tall{min-height:150px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -175,9 +225,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbwS-KgmRsswZ3MXD9JQvdQCguLhEqkLjTeX6zOZ-MIzbh7zZWGzHmA8KbdHDvBWPhaSkA/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbybhi7rwn9CgKRiya8zQIgKrgFD88mrDRz0znlHQC_XIk4gVrHCAv2MU3xx5kJeXzZMsQ/exec';
 var POLL_MS=45000;
-var COLS=['members','events','votes','notices','reads','alerts','places','posts'];
+var COLS=['members','events','votes','notices','reads','alerts','places','posts','results'];
 var ETYPES=['훈련','매치','대회','모임'];
 var BCATS=['포메이션','세트피스','로테이션','상대 분석','기타'];
 var MAX_FILES=8,MAX_FILE=5*1024*1024;
@@ -209,13 +259,13 @@ function dlEff(e){return e.deadline||shift(e.date,-7);}
 function mapLink(u){var s=safeUrl(u);return s?'<a class="maplink" href="'+esc(s)+'" target="_blank" rel="noopener noreferrer">지도</a>':'';}
 
 /* ---------- 상태 ---------- */
-var S={members:{},events:{},votes:{},notices:{},reads:{},alerts:{},places:{},posts:{}};
-var ui={bcat:'전체',files:{keep:[],add:[]},tab:'events',filter:'all',showPast:false,open:{},form:null,authMode:'login',confirm:null,dlTouched:false};
+var S={members:{},events:{},votes:{},notices:{},reads:{},alerts:{},places:{},posts:{},results:{}};
+var ui={view:'list',calMonth:'',calSel:'',rfilter:'all',bcat:'전체',files:{keep:[],add:[]},tab:'events',filter:'all',showPast:false,open:{},form:null,authMode:'login',confirm:null,dlTouched:false};
 var me=null,myRole='member',amOwner=false,token=null,loaded=false,netErr=false;
 var pending=0,syncing=false,again=false,toastTimer=null;
 var canWrite=true;
 
-function nick(id){var m=S.members[id];return m?m.yy+' '+m.name:'탈퇴한 멤버';}
+function nick(id){var m=S.members[id];return m?m.name:'탈퇴한 멤버';}
 function memberCount(){return Object.keys(S.members).length;}
 function roleOf(id){var m=S.members[id];return m?(m.role||'member'):'member';}
 /* 소유자: 마스터를 지정하는 사람. 마스터: 관리자를 지정하는 사람. 관리자: 일정·공지·장소를 관리하는 사람 */
@@ -267,7 +317,7 @@ async function act(a,p){
 function applySync(j){
   COLS.forEach(function(c){S[c]=j.data[c]||{};});
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
-  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4);
+  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods);
   me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;loaded=true;netErr=false;
 }
 async function syncNow(){
@@ -295,20 +345,18 @@ function renderAuth(){
   root.innerHTML='<main class="wrap auth">'+logo(true)+'<p id="authStatus" class="status"></p>'+
   '<div class="seg" role="group" aria-label="로그인 방식"><button type="button" data-act="authmode" data-m="login" aria-pressed="'+(!su)+'">로그인</button><button type="button" data-act="authmode" data-m="signup" aria-pressed="'+su+'">처음이에요</button></div>'+
   '<form id="authForm" class="form" novalidate>'+
-  '<div class="row2"><label class="field">출생연도 2자리<input class="inp" id="f-yy" inputmode="numeric" maxlength="2" placeholder="00" data-digits autocomplete="off"></label>'+
-  '<label class="field">이름<input class="inp" id="f-name" maxlength="8" placeholder="홍길동" autocomplete="off"></label></div>'+
+  '<label class="field">이름 (닉네임)<input class="inp" id="f-name" maxlength="8" placeholder="홍길동" autocomplete="off"></label>'+
   '<label class="field">비밀번호 숫자 4자리<input class="inp" id="f-pin" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="'+(su?'new-password':'current-password')+'"></label>'+
   (su?'<label class="field">비밀번호 확인<input class="inp" id="f-pin2" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="new-password"></label><label class="field">팀 가입 코드 (운영진에게 받은 코드)<input class="inp" id="f-code" type="text" maxlength="40" autocomplete="off"></label>':'')+
   '<p id="authErr" class="err" role="alert"></p>'+
   '<button class="btn pri" type="submit">'+(su?'가입하고 시작':'로그인')+'</button></form>'+
-  '<p class="hint">닉네임은 <b>00 홍길동</b>처럼 출생연도 2자리와 이름으로 만들어져요. 같은 닉네임은 한 번만 가입할 수 있어요.</p></main>';
+  '<p class="hint">닉네임은 <b>이름</b>이에요. 같은 이름이 이미 있으면 이름 뒤에 구분 글자를 붙여 주세요. 예: <b>홍길동B</b></p></main>';
   updateStatus();
 }
 async function doAuth(){
   var err=function(m){var e=document.getElementById('authErr');if(e)e.textContent=m;};
   if(!configured()){err('서버 주소가 아직 설정되지 않았어요.');return;}
-  var yy=val('f-yy').trim(),name=val('f-name').replace(/\s+/g,''),pin=val('f-pin').trim(),su=ui.authMode==='signup';
-  if(!/^\d{2}$/.test(yy)){err('출생연도는 숫자 2자리로 입력해 주세요. 예: 00');return;}
+  var name=val('f-name').replace(/\s+/g,''),pin=val('f-pin').trim(),su=ui.authMode==='signup';
   if(!/^[가-힣A-Za-z]{2,8}$/.test(name)){err('이름은 2~8자의 한글 또는 영문으로 입력해 주세요.');return;}
   if(!/^\d{4}$/.test(pin)){err('비밀번호는 숫자 4자리예요.');return;}
   if(su&&val('f-pin2').trim()!==pin){err('비밀번호 확인이 달라요.');return;}
@@ -317,7 +365,7 @@ async function doAuth(){
   if(btn){btn.disabled=true;btn.textContent='확인 중…';}
   err('');
   try{
-    var j=await call(su?'signup':'login',{yy:yy,name:name,pin:pin,code:val('f-code').trim()});
+    var j=await call(su?'signup':'login',{name:name,pin:pin,code:val('f-code').trim()});
     token=j.token;setSess(token);ui.tab='events';
     await syncNow();
     if(!loaded){err('서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');token=null;setSess(null);if(btn){btn.disabled=false;btn.textContent=su?'가입하고 시작':'로그인';}}
@@ -397,10 +445,10 @@ function paintApp(){
   function tab(k,l,b){return '<button class="tab" role="tab" data-act="tab" data-t="'+k+'" aria-selected="'+(ui.tab===k)+'">'+l+(b?'<span class="badge">'+b+'</span>':'')+'</button>';}
   h.innerHTML='<header class="top"><div class="wrap"><div class="top-in">'+logo()+
     '<div class="who"><span>'+esc(nick(me))+'</span><button class="linkbtn" data-act="logout">로그아웃</button></div></div>'+
-    '<div class="tabs" role="tablist">'+tab('events','일정',needCountNow())+tab('notices','공지',unreadNotices())+tab('alerts','알림',alertTotal())+tab('board','전술',0)+tab('team','팀',0)+'</div></div></header>';
-  var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요. Apps Script에서 새 Code.gs를 붙여넣고 배포 관리 → 새 버전으로 배포해 주세요. (대회·모임 종류가 훈련으로 저장돼요)':'');
+    '<div class="tabs" role="tablist">'+tab('events','일정',needCountNow())+tab('results','결과',0)+tab('notices','공지',unreadNotices())+tab('alerts','알림',alertTotal())+tab('board','전술',0)+tab('team','팀',0)+'</div></div></header>';
+  var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요. Apps Script에서 새 Code.gs를 붙여넣고 배포 관리 → 새 버전으로 배포해 주세요. (쿼터별 결과·영상 링크 등 새 기능이 동작하지 않아요)':'');
   document.getElementById('banner').innerHTML=msg?'<div class="banner"><div class="wrap">'+esc(msg)+'</div></div>':'';
-  document.getElementById('list').innerHTML=ui.tab==='events'?eventsHTML():ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():teamHTML();
+  document.getElementById('list').innerHTML=ui.tab==='events'?(ui.view==='cal'?calendarPage():eventsHTML()):ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():ui.tab==='results'?resultsHTML():teamHTML();
 }
 function needCountNow(){return eventList().filter(needsVote).length;}
 function paintForm(){
@@ -420,7 +468,7 @@ function eventsHTML(){
   var un=unreadNotices(),ua=alertTotal(),out='';
   if(ua)out+='<button class="note-banner" data-act="tab" data-t="alerts">새 알림 '+ua+'건 ›</button>';
   if(un)out+='<button class="note-banner" data-act="tab" data-t="notices">읽지 않은 공지 '+un+'건 ›</button>';
-  out+='<div class="head-row"><h2>다가오는 일정</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newevent">+ 일정 등록</button>':'')+'</div>';
+  out+=viewHead('다가오는 일정');
   out+='<div class="chips" role="group" aria-label="일정 필터">'+[['all','전체']].concat(ETYPES.map(function(t){return [t,t];}),[['need','투표 필요']]).map(function(c){return '<button class="chip" data-act="filter" data-f="'+c[0]+'" aria-pressed="'+(f===c[0])+'">'+(TCLS[c[0]]?'<span class="dot '+TCLS[c[0]]+'"></span>':'')+c[1]+'<i>'+cnt[c[0]]+'</i></button>';}).join('')+'</div>';
   if(!up.length){
     out+='<div class="card empty"><b>등록된 다가오는 일정이 없어요</b>'+(canEditData()?'위의 일정 등록으로 첫 일정을 추가해 보세요.':'관리자가 일정을 등록하면 여기에 날짜순으로 보여요.')+'</div>';
@@ -457,7 +505,7 @@ function evCard(e,t,past){
   var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+'">'+
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
     '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&!mine&&!lock?'<span class="need">투표 필요</span>':'')+'</div>'+
-    '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p></div>'+
+    '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p>'+resLine(e)+'</div>'+
     '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+
     '<div class="sum"><div class="bar" role="img" aria-label="참석 '+tl.Y.length+', 불참 '+tl.N.length+', 미정 '+tl.M.length+', 미응답 '+no+'">'+
     '<i class="y" style="width:'+pct(tl.Y.length)+'%"></i><i class="n" style="width:'+pct(tl.N.length)+'%"></i><i class="m" style="width:'+pct(tl.M.length)+'%"></i></div>'+
@@ -471,6 +519,7 @@ function evCard(e,t,past){
   h+='<div class="ev-foot"><button class="btn sm" data-act="expand" data-e="'+esc(e.id)+'" aria-expanded="'+open+'">'+(open?'명단 접기':'명단 보기')+'</button>';
   if(mg&&!past)h+='<button class="btn sm" data-act="sharevote" data-e="'+esc(e.id)+'">미응답 안내 문구</button>';
   h+='<span class="sp"></span>';
+  if(mg&&(e.type==='매치'||e.type==='대회')&&e.date<=todayStr())h+='<button class="btn sm" data-act="newresult" data-e="'+esc(e.id)+'">결과 기록</button><button class="btn sm" data-act="editevlinks" data-e="'+esc(e.id)+'">영상 링크</button>';
   if(mg)h+='<button class="btn sm" data-act="editevent" data-e="'+esc(e.id)+'">수정</button><button class="btn sm danger" data-act="delevent" data-e="'+esc(e.id)+'">'+(ui.confirm==='ev:'+e.id?'정말 삭제':'삭제')+'</button>';
   return h+'</div></article>';
 }
@@ -565,7 +614,7 @@ function formHTML(){
   var f=ui.form;if(!f)return '';
   if(f.kind==='share')return '<div class="card"><h2>단톡방에 올릴 문구</h2><p class="hintline">복사가 되지 않았어요. 아래 문구를 길게 눌러 복사해 주세요.</p><div class="form"><textarea class="inp" id="fs-text" readonly>'+esc(f.text)+'</textarea><div class="form-actions"><button type="button" class="btn pri" data-act="cancelform">닫기</button></div></div></div>';
   if(f.kind==='event'){
-    var e=f.pending||(f.id?S.events[f.id]:null)||{},ty=e.type||'훈련';
+    var e=f.pending||(f.id?S.events[f.id]:null)||f.pre||{},ty=e.type||'훈련';
     if(f.pending){
       var old=f.id?S.events[f.id]:null,chg=diffEvent(old,e);
       var map=safeUrl(e.map);
@@ -596,6 +645,8 @@ function formHTML(){
       '<label class="field">메모 (선택, 주차·연락처·주의사항 등)<textarea class="inp" id="fp-memo" maxlength="200">'+esc(p.memo||'')+'</textarea></label>'+actions()+'</form></div>';
   }
   if(f.kind==='post')return boardFormHTML();
+  if(f.kind==='result')return resultFormHTML();
+  if(f.kind==='evlinks')return evLinksFormHTML();
   var n=f.id?S.notices[f.id]||{}:{};
   return '<div class="card"><h2>'+(f.id?'공지 수정':'공지 작성')+'</h2><form id="ntForm" class="form" novalidate>'+
     '<label class="field">제목<input class="inp" id="fn-title" type="text" maxlength="80" value="'+esc(n.title||'')+'"></label>'+
@@ -609,7 +660,7 @@ function collectEvent(){
   if(!date||!time)return err('날짜와 시간을 입력해 주세요.');
   var map=val('fe-map').trim();if(map&&!safeUrl(map))return err('지도 링크는 https:// 로 시작하는 주소여야 해요.');
   var dl=val('fe-deadline');
-  if(!dl){dl=shift(date,-7);if(dl<todayStr())dl=todayStr();}
+  if(!dl){dl=shift(date,-7);if(dl<todayStr())dl=todayStr();if(dl>date)dl=date;}
   if(dl>date)return err('투표 마감일은 일정 날짜보다 늦을 수 없어요.');
   return {type:type,date:date,time:time,place:val('fe-place').trim(),detail:val('fe-detail').trim(),map:map,title:val('fe-title').trim(),deadline:dl,memo:val('fe-memo').trim()};
 }
@@ -754,6 +805,220 @@ async function saveBoard(){
   if(ok){ui.form=null;ui.files={keep:[],add:[]};paintForm();paintApp();toast('자료를 저장했어요.');}
   else{var b2=document.getElementById('fb-save');if(b2){b2.disabled=false;b2.textContent='저장';}}
 }
+
+/* ===== 경기 결과: 일정(대회) > 경기 > 쿼터/전후반 ===== */
+var MAX_VIDEOS=15,MAX_PERIODS=12;
+function resultsOf(eid){
+  return Object.keys(S.results).map(function(id){return Object.assign({id:id},S.results[id]);}).filter(function(r){return r.e===eid;}).sort(function(a,b){return (a.at||0)-(b.at||0);});
+}
+function outcome(r){return r.us>r.them?'승':r.us<r.them?'패':'무';}
+function resPeriods(r){return (r.periods&&r.periods.length)?r.periods:[{label:'',us:r.us,them:r.them,scorers:r.scorers||[]}];}
+function scorerName(x){return x.m&&S.members[x.m]?S.members[x.m].name:x.name;}
+function aggScorers(list){
+  var map={},order=[];
+  list.forEach(function(x){var k=x.m&&S.members[x.m]?'m:'+x.m:'n:'+x.name;if(!map[k]){map[k]={name:scorerName(x),n:0};order.push(k);}map[k].n+=x.n;});
+  return order.map(function(k){return map[k];});
+}
+function resScorers(r){var o=[];resPeriods(r).forEach(function(p){(p.scorers||[]).forEach(function(x){o.push(x);});});return o;}
+function scorersText(list){return aggScorers(list).map(function(x){return esc(x.name)+(x.n>1?' ×'+x.n:'');}).join(', ');}
+function linksOf(l){return (l||[]).filter(function(x){return x&&safeUrl(x.url);});}
+function isYT(u){return /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(u);}
+function linkBtns(ls){
+  var l=linksOf(ls);if(!l.length)return '';
+  return '<div class="vlinks">'+l.map(function(x,i){return '<a class="vlink" href="'+esc(safeUrl(x.url))+'" target="_blank" rel="noopener noreferrer">'+(isYT(x.url)?'▶ ':'↗ ')+esc(x.label||('영상 '+(i+1)))+'</a>';}).join('')+'</div>';
+}
+function videoCount(e){var n=linksOf(e.links).length;resultsOf(e.id).forEach(function(r){n+=linksOf(r.links).length;});return n;}
+function resLine(e){
+  if(e.type!=='매치'&&e.type!=='대회')return '';
+  var rs=resultsOf(e.id),vc=videoCount(e);if(!rs.length&&!vc)return '';
+  return '<button class="resline" data-act="gotores" data-e="'+esc(e.id)+'">'+(rs.length?(e.type==='대회'?rs.length+'경기 ':'결과 ')+rs.map(function(r){return r.us+':'+r.them+' '+outcome(r);}).join(' · '):'')+(vc?(rs.length?' · ':'')+'▶ 영상 '+vc:'')+' ›</button>';
+}
+function parseLinkLines(text,max){
+  var out=[],lines=String(text||'').split('\n');
+  for(var i=0;i<lines.length;i++){
+    var ln=lines[i].trim();if(!ln)continue;
+    var ix=ln.search(/\s*\|\s*https?:\/\//),label='',u=ln;
+    if(ix>=0){label=ln.slice(0,ix).trim();u=ln.slice(ln.indexOf('|',ix)+1).trim();}
+    if(!safeUrl(u))return {err:'링크는 https:// 로 시작하는 주소여야 해요. ('+ln.slice(0,30)+')'};
+    out.push({label:label.slice(0,40),url:u});
+  }
+  if(out.length>max)return {err:'링크는 최대 '+max+'개예요. (지금 '+out.length+'개)'};
+  return {links:out};
+}
+function resultsHTML(){
+  var out='';
+  out+='<div class="head-row"><h2>경기 결과</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newresult">+ 결과 기록</button>':'')+'</div>';
+  var f=ui.rfilter;
+  var groups=eventList().filter(function(e){return (e.type==='매치'||e.type==='대회')&&(resultsOf(e.id).length||linksOf(e.links).length);});
+  var cnt=function(t){return groups.filter(function(e){return t==='all'||e.type===t;}).length;};
+  out+='<div class="chips" role="group" aria-label="결과 필터">'+[['all','전체'],['매치','매치'],['대회','대회']].map(function(c){
+    return '<button class="chip" data-act="rfilter" data-f="'+c[0]+'" aria-pressed="'+(f===c[0])+'">'+(TCLS[c[0]]?'<span class="dot '+TCLS[c[0]]+'"></span>':'')+c[1]+'<i>'+cnt(c[0])+'</i></button>';}).join('')+'</div>';
+  groups=groups.filter(function(e){return f==='all'||e.type===f;}).sort(function(a,b){return evKey(a)<evKey(b)?1:-1;});
+  if(!groups.length){
+    return out+'<div class="card empty"><b>기록된 결과가 없어요</b>'+(canEditData()?'매치나 대회가 끝나면 + 결과 기록으로 쿼터별 스코어, 득점자, 영상 링크를 남겨 보세요.':'관리자가 경기 결과를 기록하면 여기에 보여요.')+'</div>';
+  }
+  var all=[];groups.forEach(function(e){resultsOf(e.id).forEach(function(r){all.push(r);});});
+  var w=0,d=0,l=0,gf=0,ga=0,sc=[];
+  all.forEach(function(r){var o=outcome(r);if(o==='승')w++;else if(o==='무')d++;else l++;gf+=r.us;ga+=r.them;sc=sc.concat(resScorers(r));});
+  if(all.length)out+='<div class="card"><div class="stats">'+[['경기',all.length],['승',w],['무',d],['패',l],['득점',gf],['실점',ga]].map(function(x){return '<div><b>'+x[1]+'</b><span>'+x[0]+'</span></div>';}).join('')+'</div></div>';
+  var rank=aggScorers(sc).sort(function(a,b){return b.n-a.n||a.name.localeCompare(b.name,'ko');}).slice(0,10);
+  if(rank.length){
+    var pos=0,prev=-1;
+    out+='<div class="head-row"><h2>득점 순위</h2></div><div class="card">'+rank.map(function(x,i){if(x.n!==prev){pos=i+1;prev=x.n;}
+      return '<div class="mem"><span class="rk">'+pos+'</span><span class="nm">'+esc(x.name)+'</span><b>'+x.n+'골</b></div>';}).join('')+'</div>';
+  }
+  groups.forEach(function(e){
+    var rs=resultsOf(e.id),rw=0,rd=0,rl=0,ef=0,ea=0;
+    rs.forEach(function(r){var o=outcome(r);if(o==='승')rw++;else if(o==='무')rd++;else rl++;ef+=r.us;ea+=r.them;});
+    out+='<section class="card rg '+tcls(e.type)+'" id="rg-'+esc(e.id)+'"><div class="nt-top"><span class="tag ty">'+esc(e.type)+'</span><span>'+esc(fmtMD(e.date))+(e.time?' '+esc(e.time):'')+'</span>'+(placeFull(e)?'<span>'+esc(placeFull(e))+'</span>':'')+'</div>'+
+      '<h3 class="nt-title">'+esc(e.title||e.type)+'</h3>'+
+      (rs.length?'<p class="rg-sum">'+(rs.length>1?rs.length+'경기 '+rw+'승 '+rd+'무 '+rl+'패 · 득실 '+ef+':'+ea:'')+'</p>':'')+
+      (linksOf(e.links).length?'<p class="sub-h">'+(e.type==='대회'?'대회 영상':'경기 영상')+'</p>'+linkBtns(e.links):'');
+    rs.forEach(function(r,gi){
+      var o=outcome(r),ps=resPeriods(r),multi=ps.length>1||(ps[0]&&ps[0].label);
+      out+='<div class="game"><div class="g-top"><b>'+esc(r.round||(rs.length>1?(gi+1)+'경기':''))+'</b></div>'+
+        '<div class="score"><span class="side">NOVA</span><b class="num">'+r.us+'</b><span class="colon">:</span><b class="num">'+r.them+'</b><span class="side">'+esc(r.opp||'상대')+'</span><span class="oc oc-'+(o==='승'?'w':o==='무'?'d':'l')+'">'+o+'</span></div>';
+      if(multi){
+        out+='<div class="plist">'+ps.map(function(p){return '<div class="prow"><span class="pl">'+esc(p.label||'기록')+'</span><b class="ps">'+p.us+' : '+p.them+'</b><span class="pscr">'+((p.scorers||[]).length?scorersText(p.scorers):'')+'</span></div>';}).join('')+'</div>';
+      }else if(resScorers(r).length)out+='<p class="sc-line"><b>득점</b> '+scorersText(resScorers(r))+'</p>';
+      if(multi&&resScorers(r).length)out+='<p class="sc-line"><b>득점 합계</b> '+scorersText(resScorers(r))+'</p>';
+      if(r.note)out+='<p class="ev-sub">'+esc(r.note)+'</p>';
+      if(linksOf(r.links).length)out+='<p class="sub-h">경기 영상</p>'+linkBtns(r.links);
+      if(canEditData())out+='<div class="ev-foot"><span class="sp"></span><button class="btn sm" data-act="editresult" data-r="'+esc(r.id)+'">수정</button><button class="btn sm danger" data-act="delresult" data-r="'+esc(r.id)+'">'+(ui.confirm==='rs:'+r.id?'정말 삭제':'삭제')+'</button></div>';
+      out+='</div>';
+    });
+    out+='<div class="ev-foot"><button class="btn sm" data-act="gotoevent" data-e="'+esc(e.id)+'">일정 보기</button><span class="sp"></span>'+(canEditData()?'<button class="btn sm" data-act="editevlinks" data-e="'+esc(e.id)+'">영상 링크</button><button class="btn sm pri" data-act="newresult" data-e="'+esc(e.id)+'">+ 경기 추가</button>':'')+'</div></section>';
+  });
+  return out;
+}
+function resultEventOptions(sel){
+  var l=eventList().filter(function(e){return e.type==='매치'||e.type==='대회';}).sort(function(a,b){return evKey(a)<evKey(b)?1:-1;});
+  return l.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(fmtMD(e.date)+' '+e.type+' · '+(e.title||e.type))+'</option>';}).join('');
+}
+function guessOpp(e){var t=(e&&e.title)||'';var m=t.match(/^\s*(?:vs\.?|VS\.?)\s*(.+)$/);return m?m[1].trim():'';}
+function blankPeriod(label){return {label:label||'',us:'',them:'',sc:[]};}
+function resultFormHTML(){
+  var f=ui.form,r=(f.id&&S.results[f.id])||{},d=f.draft;
+  if(!d){
+    var evs=eventList().filter(function(e){return e.type==='매치'||e.type==='대회';}).sort(function(a,b){return evKey(a)<evKey(b)?1:-1;});
+    var pick=f.e||r.e||((evs.filter(function(e){return e.date<=todayStr();})[0]||evs[0]||{}).id||'');
+    d=f.draft={e:pick,round:r.round||'',opp:f.id?(r.opp||''):guessOpp(S.events[pick]),note:r.note||'',links:linksToText(r.links),
+      ps:f.id?resPeriods(r).map(function(p){return {label:p.label||'',us:String(p.us),them:String(p.them),sc:(p.scorers||[]).map(function(x){return {m:x.m||'',name:x.m?'':x.name,n:String(x.n)};})};}):[blankPeriod('')]};
+  }
+  var mem=sortIds(Object.keys(S.members)),multi=d.ps.length>1;
+  var blocks=d.ps.map(function(p,pi){
+    var rows=p.sc.map(function(x,i){
+      return '<div class="scrow" data-i="'+i+'"><select class="inp sc-m" aria-label="득점자"><option value="">직접 입력</option>'+mem.map(function(id){return '<option value="'+esc(id)+'"'+(x.m===id?' selected':'')+'>'+esc(nick(id))+'</option>';}).join('')+'</select>'+
+        (x.m?'':'<input class="inp sc-name" maxlength="30" placeholder="이름 (외부 선수, 자책골 등)" value="'+esc(x.name||'')+'">')+
+        '<input class="inp sc-n" type="number" inputmode="numeric" min="1" max="30" value="'+esc(x.n||'1')+'" aria-label="득점 수"><button type="button" class="btn sm" data-act="rmscorer" data-p="'+pi+'" data-i="'+i+'">빼기</button></div>';}).join('');
+    return '<fieldset class="pb" data-p="'+pi+'"><div class="pb-h"><input class="inp p-label" maxlength="20" placeholder="구간 이름 (예: 1쿼터, 전반) — 비워도 돼요" value="'+esc(p.label)+'">'+(multi?'<button type="button" class="btn sm" data-act="rmperiod" data-p="'+pi+'">구간 빼기</button>':'')+'</div>'+
+      '<div class="row2"><label class="field">NOVA 득점<input class="inp p-us" type="number" inputmode="numeric" min="0" max="99" value="'+esc(p.us)+'"></label><label class="field">상대 득점<input class="inp p-them" type="number" inputmode="numeric" min="0" max="99" value="'+esc(p.them)+'"></label></div>'+
+      (rows?'<div class="sclist">'+rows+'</div>':'')+'<button type="button" class="btn sm" style="align-self:flex-start" data-act="addscorer" data-p="'+pi+'">+ 득점자</button></fieldset>';
+  }).join('');
+  return '<div class="card"><h2>'+(f.id?'경기 수정':'경기 기록')+'</h2><form id="rsForm" class="form" novalidate>'+
+    '<label class="field">일정 (매치·대회)<select class="inp" id="fr-ev">'+resultEventOptions(d.e)+'</select></label>'+
+    '<div class="row2"><label class="field">경기명 (선택)<input class="inp" id="fr-round" maxlength="30" placeholder="예) 예선 1경기, 결승" value="'+esc(d.round)+'"></label>'+
+    '<label class="field">상대 팀<input class="inp" id="fr-opp" maxlength="40" value="'+esc(d.opp)+'"></label></div>'+
+    '<div class="field">쿼터·전후반 기록<span class="hintline">한 경기가 쿼터나 전·후반으로 나뉘면 구간을 추가해 구간별 점수와 득점자를 적어요. 나누지 않으면 한 칸에 합계만 적으면 돼요.</span>'+
+    '<div class="qrow"><button type="button" class="btn sm" data-act="addperiod" data-k="q">+ 쿼터 추가</button><button type="button" class="btn sm" data-act="addperiod" data-k="h">전반·후반</button><button type="button" class="btn sm" data-act="addperiod" data-k="x">+ 연장·PK</button></div></div>'+
+    blocks+'<p class="rtotal" id="fr-total"></p>'+
+    '<label class="field">영상 링크 (선택, 한 줄에 하나: 이름 | 주소, 최대 '+MAX_VIDEOS+'개)<textarea class="inp tall" id="fr-links" placeholder="1쿼터 | https://youtu.be/...\n2쿼터 | https://youtu.be/...">'+esc(d.links)+'</textarea></label>'+
+    '<label class="field">메모 (선택)<textarea class="inp" id="fr-note" maxlength="200">'+esc(d.note)+'</textarea></label>'+
+    '<p id="formErr" class="err" role="alert"></p><div class="form-actions"><button type="button" class="btn" data-act="cancelform">취소</button><button type="submit" class="btn pri">저장</button></div></form></div>';
+}
+function readResDraft(){
+  var f=ui.form;if(!f||f.kind!=='result'||!document.getElementById('fr-ev'))return;
+  f.draft={e:val('fr-ev'),round:val('fr-round'),opp:val('fr-opp'),note:val('fr-note'),links:val('fr-links'),
+    ps:Array.prototype.map.call(document.querySelectorAll('.pb'),function(pb){
+      return {label:pb.querySelector('.p-label').value,us:pb.querySelector('.p-us').value,them:pb.querySelector('.p-them').value,
+        sc:Array.prototype.map.call(pb.querySelectorAll('.scrow'),function(row){var nm=row.querySelector('.sc-name');return {m:row.querySelector('.sc-m').value,name:nm?nm.value:'',n:row.querySelector('.sc-n').value};})};})};
+}
+function updateResTotal(){
+  var el=document.getElementById('fr-total');if(!el)return;
+  var a=0,b=0,filled=false;
+  document.querySelectorAll('.pb').forEach(function(pb){var u=pb.querySelector('.p-us').value,t=pb.querySelector('.p-them').value;if(u!==''||t!=='')filled=true;a+=Number(u)||0;b+=Number(t)||0;});
+  el.textContent=filled?'합계  NOVA '+a+' : '+b+' 상대 · '+(a>b?'승':a<b?'패':'무'):'';
+}
+async function saveResult(){
+  var err=function(m){var x=document.getElementById('formErr');if(x)x.textContent=m;};
+  readResDraft();var d=ui.form.draft;
+  if(!d.e){err('연결할 매치나 대회 일정을 골라 주세요. 일정이 없다면 먼저 일정을 등록해 주세요.');return;}
+  var periods=[];
+  for(var pi=0;pi<d.ps.length;pi++){
+    var p=d.ps[pi],nm=(p.label.trim()||(d.ps.length>1?(pi+1)+'번째 구간':'점수'));
+    if(!/^\d{1,2}$/.test(p.us.trim())||!/^\d{1,2}$/.test(p.them.trim())){err(nm+': 양 팀 점수를 0~99 사이 숫자로 입력해 주세요.');return;}
+    var us=+p.us,sum=0,list=[];
+    for(var i=0;i<p.sc.length;i++){
+      var x=p.sc[i],n=+x.n;
+      if(!x.m&&!x.name.trim()&&!x.n)continue;
+      if(!x.m&&!x.name.trim()){err(nm+': 득점자 이름을 입력하거나 멤버를 골라 주세요.');return;}
+      if(!(n>=1&&n<=30&&n===Math.floor(n))){err(nm+': 득점 수는 1 이상의 숫자로 입력해 주세요.');return;}
+      sum+=n;list.push({m:x.m,name:x.name.trim(),n:n});
+    }
+    if(sum>us){err(nm+': 득점자 합계('+sum+')가 NOVA 득점('+us+')보다 많아요. 자책골은 상대 득점에 포함해 주세요.');return;}
+    periods.push({label:p.label.trim(),us:us,them:+p.them,scorers:list});
+  }
+  var lk=parseLinkLines(d.links,MAX_VIDEOS);if(lk.err){err(lk.err);return;}
+  if(await act('saveResult',{id:ui.form.id||null,e:d.e,round:d.round.trim(),opp:d.opp.trim(),periods:periods,links:lk.links,note:d.note.trim()})){
+    ui.form=null;paintForm();paintApp();toast('경기 결과를 저장했어요.');
+  }
+}
+/* 일정(대회·매치) 전체에 붙이는 영상 링크 */
+function evLinksFormHTML(){
+  var f=ui.form,e=S.events[f.id]||{};
+  return '<div class="card"><h2>영상 링크</h2><p class="hintline">'+esc((e.title||e.type||'')+' · '+(e.date?fmtMD(e.date):''))+' 전체에 붙는 링크예요. 경기별 영상은 경기 기록에서 붙여 주세요.</p><form id="evlForm" class="form" novalidate>'+
+    '<label class="field">링크 (한 줄에 하나: 이름 | 주소, 최대 '+MAX_VIDEOS+'개)<textarea class="inp tall" id="fl-links" placeholder="예선 1경기 | https://youtu.be/...">'+esc(f.text!=null?f.text:linksToText(e.links))+'</textarea></label>'+
+    '<p id="formErr" class="err" role="alert"></p><div class="form-actions"><button type="button" class="btn" data-act="cancelform">취소</button><button type="submit" class="btn pri">저장</button></div></form></div>';
+}
+async function saveEvLinks(){
+  var err=function(m){var x=document.getElementById('formErr');if(x)x.textContent=m;};
+  var e=S.events[ui.form.id];if(!e){err('일정을 찾을 수 없어요.');return;}
+  var lk=parseLinkLines(val('fl-links'),MAX_VIDEOS);if(lk.err){err(lk.err);return;}
+  var data={type:e.type,date:e.date,time:e.time,place:e.place||'',detail:e.detail||'',map:e.map||'',title:e.title||'',deadline:e.deadline||'',memo:e.memo||'',links:lk.links};
+  if(await act('saveEvent',{id:ui.form.id,data:data})){ui.form=null;paintForm();paintApp();toast('영상 링크를 저장했어요.');}
+}
+
+/* ===== 달력 보기 ===== */
+function monthKey(s){return s.slice(0,7);}
+function calendarPage(){
+  var t=tallyAll(),f=ui.filter,out='';
+  var un=unreadNotices(),ua=alertTotal();
+  if(ua)out+='<button class="note-banner" data-act="tab" data-t="alerts">새 알림 '+ua+'건 ›</button>';
+  if(un)out+='<button class="note-banner" data-act="tab" data-t="notices">읽지 않은 공지 '+un+'건 ›</button>';
+  out+=viewHead('일정');
+  var tf=ETYPES.indexOf(f)>=0?f:'all';
+  out+='<div class="chips" role="group" aria-label="일정 필터">'+[['all','전체']].concat(ETYPES.map(function(x){return [x,x];})).map(function(c){return '<button class="chip" data-act="filter" data-f="'+c[0]+'" aria-pressed="'+(tf===c[0])+'">'+(TCLS[c[0]]?'<span class="dot '+TCLS[c[0]]+'"></span>':'')+c[1]+'</button>';}).join('')+'</div>';
+  var mk=ui.calMonth||monthKey(todayStr()),y=+mk.slice(0,4),mo=+mk.slice(5,7);
+  var evs=eventList().filter(function(e){return monthKey(e.date)===mk&&(tf==='all'||e.type===tf);}).sort(function(a,b){return evKey(a)<evKey(b)?-1:1;});
+  var by={};evs.forEach(function(e){(by[e.date]=by[e.date]||[]).push(e);});
+  var sel=ui.calSel&&monthKey(ui.calSel)===mk?ui.calSel:'';
+  if(!sel){var td=todayStr();sel=monthKey(td)===mk?td:(evs[0]?evs[0].date:'');}
+  var first=new Date(y,mo-1,1).getDay(),nd=new Date(y,mo,0).getDate(),td2=todayStr();
+  out+='<div class="cal-h"><button class="btn sm" data-act="calnav" data-d="-1" aria-label="이전 달">‹</button><b>'+y+'년 '+mo+'월</b><button class="btn sm" data-act="calnav" data-d="1" aria-label="다음 달">›</button></div>'+
+    '<div class="cal-sub"><button class="linkbtn" data-act="caltoday">오늘로 이동</button><span class="hintline">채워진 칸은 투표 완료, 테두리만 있으면 투표 필요</span></div>';
+  out+='<div class="cal" role="grid">'+WD.map(function(w,i){return '<div class="cwd'+(i===0?' sun':'')+'">'+w+'</div>';}).join('');
+  for(var i=0;i<first;i++)out+='<div class="cell blank"></div>';
+  for(var dnum=1;dnum<=nd;dnum++){
+    var ds=mk+'-'+(dnum<10?'0':'')+dnum,list=by[ds]||[],wd=(first+dnum-1)%7;
+    var chips=list.slice(0,2).map(function(e){
+      var rs=resultsOf(e.id),label=(rs.length===1)?rs[0].us+':'+rs[0].them:e.type;
+      var need=!(S.votes[e.id+'_'+me])&&e.date>=td2&&!locked(e)&&canWrite;
+      return '<i class="cc '+tcls(e.type)+(need?' need':'')+'">'+esc(label)+'</i>';}).join('')+(list.length>2?'<i class="more">+'+(list.length-2)+'</i>':'');
+    out+='<button class="cell'+(ds===td2?' today':'')+(ds===sel?' sel':'')+(wd===0?' sun':'')+'" data-act="calsel" data-d="'+ds+'" aria-label="'+mo+'월 '+dnum+'일 일정 '+list.length+'개"><span class="cn">'+dnum+'</span>'+chips+'</button>';
+  }
+  out+='</div>';
+  if(sel){
+    var sd=parseD(sel),sl=by[sel]||[];
+    out+='<div class="head-row"><h2>'+(sd.getMonth()+1)+'월 '+sd.getDate()+'일 ('+WD[sd.getDay()]+')</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newevent" data-d="'+sel+'">+ 이 날 일정 등록</button>':'')+'</div>';
+    if(!sl.length)out+='<div class="card empty"><b>이 날은 일정이 없어요</b></div>';
+    sl.forEach(function(e){out+=evCard(e,t,e.date<td2);});
+  }else out+='<div class="card empty"><b>이 달에는 일정이 없어요</b>달력의 날짜를 누르면 그날의 일정과 투표를 볼 수 있어요.</div>';
+  return out;
+}
+function viewHead(title){
+  return '<div class="head-row"><h2>'+title+'</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newevent">+ 일정 등록</button>':'')+'</div>'+
+    '<div class="seg" role="group" aria-label="보기 방식"><button data-act="calview" data-v="list" aria-pressed="'+(ui.view==='list')+'">목록</button><button data-act="calview" data-v="cal" aria-pressed="'+(ui.view==='cal')+'">달력</button></div>';
+}
 function shareVoteText(e){
   var tl=(tallyAll()[e.id])||{Y:[],N:[],M:[]},voted={};tl.Y.concat(tl.N,tl.M).forEach(function(id){voted[id]=1;});
   var rest=sortIds(Object.keys(S.members).filter(function(id){return !voted[id];})).map(nick);
@@ -777,17 +1042,22 @@ root.addEventListener('submit',function(ev){
   else if(id==='evForm'){var o=collectEvent();if(o){ui.form.pending=o;paintForm();}}
   else if(id==='ntForm')saveNotice();
   else if(id==='plForm')savePlace();
+  else if(id==='rsForm')saveResult();
+  else if(id==='evlForm')saveEvLinks();
   else if(id==='bdForm')saveBoard();
 });
 root.addEventListener('input',function(ev){
   var t=ev.target;if(!t)return;
   if(t.hasAttribute&&t.hasAttribute('data-digits'))t.value=t.value.replace(/\D/g,'');
   if(t.id==='fe-deadline')ui.dlTouched=true;
+  if(t.classList&&(t.classList.contains('p-us')||t.classList.contains('p-them')))updateResTotal();
 });
 root.addEventListener('change',function(ev){
   var t=ev.target;if(!t)return;
-  if(t.id==='fe-date'&&!ui.dlTouched&&t.value){var d=shift(t.value,-7);if(d<todayStr())d=todayStr();document.getElementById('fe-deadline').value=d;}
+  if(t.id==='fe-date'&&!ui.dlTouched&&t.value){var d=shift(t.value,-7);if(d<todayStr())d=todayStr();if(d>t.value)d=t.value;document.getElementById('fe-deadline').value=d;}
   if(t.id==='fb-pick'){addPicked(t);return;}
+  if(t.id==='fr-ev'){var oe=S.events[t.value],oi=document.getElementById('fr-opp');if(oi&&!oi.value.trim())oi.value=guessOpp(oe);return;}
+  if(t.classList&&t.classList.contains('sc-m')){readResDraft();paintForm();return;}
   if(t.id==='fe-pick'){var p=S.places[t.value];document.getElementById('fe-place').value=p?p.name:'';document.getElementById('fe-map').value=p?(p.url||''):'';}
 });
 root.addEventListener('click',async function(ev){
@@ -815,7 +1085,7 @@ root.addEventListener('click',async function(ev){
       if(!(await act('read',{n:d.n})))await syncNow();
       paintApp();break;
     }
-    case 'newevent':ui.form={kind:'event',id:null};ui.dlTouched=false;paintForm();break;
+    case 'newevent':ui.form={kind:'event',id:null,pre:d.d?{date:d.d}:null};ui.dlTouched=false;paintForm();break;
     case 'editevent':ui.form={kind:'event',id:d.e};ui.dlTouched=true;paintForm();break;
     case 'editback':ui.form.pending=null;ui.dlTouched=true;paintForm();break;
     case 'commitevent':await commitEvent();break;
@@ -834,6 +1104,33 @@ root.addEventListener('click',async function(ev){
       paintApp();break;
     }
     case 'pinpost':{await act('pinBoard',{id:d.b,pinned:!(S.posts[d.b]&&S.posts[d.b].pinned)});paintApp();break;}
+    case 'calview':ui.view=d.v;try{localStorage.setItem('nova-view',d.v);}catch(e){}paintApp();break;
+    case 'calnav':{var cm=ui.calMonth||todayStr().slice(0,7),cy=+cm.slice(0,4),cmo=+cm.slice(5,7)+(+d.d);var nd2=new Date(cy,cmo-1,1);ui.calMonth=nd2.getFullYear()+'-'+(nd2.getMonth()<9?'0':'')+(nd2.getMonth()+1);ui.calSel='';paintApp();break;}
+    case 'caltoday':ui.calMonth=todayStr().slice(0,7);ui.calSel=todayStr();paintApp();break;
+    case 'calsel':ui.calSel=d.d;paintApp();break;
+    case 'gotoevent':{var ge=S.events[d.e];if(ge){ui.tab='events';ui.view='cal';ui.filter='all';ui.calMonth=ge.date.slice(0,7);ui.calSel=ge.date;ui.form=null;paintForm();paintApp();window.scrollTo(0,0);}break;}
+    case 'rfilter':ui.rfilter=d.f;paintApp();break;
+    case 'newresult':ui.tab='results';ui.form={kind:'result',id:null,e:d.e||''};paintForm();paintApp();break;
+    case 'editresult':ui.form={kind:'result',id:d.r};paintForm();break;
+    case 'addscorer':readResDraft();ui.form.draft.ps[+d.p].sc.push({m:'',name:'',n:'1'});paintForm();break;
+    case 'rmscorer':readResDraft();ui.form.draft.ps[+d.p].sc.splice(+d.i,1);paintForm();break;
+    case 'rmperiod':readResDraft();ui.form.draft.ps.splice(+d.p,1);paintForm();break;
+    case 'addperiod':{
+      readResDraft();var ps=ui.form.draft.ps;
+      if(ps.length>=MAX_PERIODS){toast('구간은 최대 '+MAX_PERIODS+'개예요.');break;}
+      var blank=ps.length===1&&!ps[0].label.trim()&&ps[0].us===''&&ps[0].them===''&&!ps[0].sc.length;
+      if(d.k==='q'){var qn=ps.filter(function(x){return /쿼터$/.test(x.label.trim());}).length;if(blank)ps[0].label='1쿼터';else ps.push(blankPeriod((qn+1)+'쿼터'));}
+      else if(d.k==='h'){if(ps.length>2){toast('구간이 이미 많아요. 필요 없는 구간을 먼저 빼 주세요.');break;}ps[0].label='전반';if(!ps[1])ps.push(blankPeriod('후반'));else ps[1].label='후반';}
+      else ps.push(blankPeriod('연장'));
+      paintForm();break;
+    }
+    case 'gotores':{ui.tab='results';ui.rfilter='all';ui.form=null;paintForm();paintApp();var gel=document.getElementById('rg-'+d.e);if(gel)gel.scrollIntoView({block:'start'});break;}
+    case 'editevlinks':ui.form={kind:'evlinks',id:d.e};paintForm();break;
+    case 'delresult':{
+      var k6='rs:'+d.r;if(prev!==k6){ui.confirm=k6;paintApp();break;}
+      if(await act('delResult',{id:d.r}))toast('결과를 삭제했어요.');
+      paintApp();break;
+    }
     case 'cancelform':ui.form=null;paintForm();break;
     case 'sharevote':{var se=S.events[d.e];if(se)await copyShare(shareVoteText(Object.assign({id:d.e},se)));break;}
     case 'sharealert':{var sa=S.alerts[d.a];if(sa)await copyShare(shareAlertText(sa));break;}
@@ -871,6 +1168,7 @@ root.addEventListener('click',async function(ev){
 
 /* ---------- 시작 ---------- */
 (function boot(){
+  try{var vv=localStorage.getItem('nova-view');if(vv==='cal'||vv==='list')ui.view=vv;}catch(e){}
   token=getSess();
   if(configured()&&token){root.dataset.screen='wait';root.innerHTML='<p class="loading">불러오는 중…</p>';syncNow();}
   else{token=null;renderAuth();}

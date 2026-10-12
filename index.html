@@ -146,6 +146,14 @@ textarea.inp{min-height:88px;resize:vertical}
 .seg button{border:0;background:none;padding:9px;border-radius:7px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
 .hint{margin-top:16px;font-size:13px;color:var(--muted)}
+.markall{margin-top:8px}
+.note-banner.pinb{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.pushc .steps{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--muted);display:grid;gap:4px}
+.topicbox{display:flex;align-items:center;gap:8px;margin-top:10px}
+.topicbox code,.hintline code{background:var(--sunk);padding:4px 8px;border-radius:6px;font-size:13px;word-break:break-all}
+.unitrow{display:flex;align-items:center;gap:8px}.unitrow .inp{max-width:110px}.unit{font-size:14px;color:var(--ink)}
+select.inp{appearance:auto}
+.ver{margin:28px 0 20px;text-align:center;font-size:11px;color:var(--muted);opacity:.8;font-variant-numeric:tabular-nums}
 .hint b{color:var(--ink)}
 .loading{padding:80px 16px;text-align:center;color:var(--muted)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;max-width:calc(100% - 32px);z-index:20}
@@ -225,9 +233,11 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbybhi7rwn9CgKRiya8zQIgKrgFD88mrDRz0znlHQC_XIk4gVrHCAv2MU3xx5kJeXzZMsQ/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbySez6Gd2kPE1kG5dgJNAU8fiTh-fkZF54WMwodxG5ANSI8DgRU_SRxNEcTEfvA-SXhMg/exec';
 var POLL_MS=45000;
-var COLS=['members','events','votes','notices','reads','alerts','places','posts','results'];
+var APP_VER='v1.7 · 2026-10-12';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var serverVer='';
+var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings'];
 var ETYPES=['훈련','매치','대회','모임'];
 var BCATS=['포메이션','세트피스','로테이션','상대 분석','기타'];
 var MAX_FILES=8,MAX_FILE=5*1024*1024;
@@ -255,12 +265,14 @@ function evKey(e){return e.date+' '+(e.time||'00:00');}
 function newId(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function val(id){var el=document.getElementById(id);return el?el.value:'';}
 function safeUrl(u){u=(u||'').trim();return /^https?:\/\/\S+$/i.test(u)?u:'';}
-function dlEff(e){return e.deadline||shift(e.date,-7);}
+var DEF_ST={dlDays:7,remindDays:3,eveDays:1,push:true,hour:9,pushNew:true};
+function cfgS(){var s=(S.settings&&S.settings.main)||{},o={};Object.keys(DEF_ST).forEach(function(k){o[k]=s[k]!==undefined?s[k]:DEF_ST[k];});o.topic=s.topic||'';return o;}
+function dlEff(e){return e.deadline||shift(e.date,-cfgS().dlDays);}
 function mapLink(u){var s=safeUrl(u);return s?'<a class="maplink" href="'+esc(s)+'" target="_blank" rel="noopener noreferrer">지도</a>':'';}
 
 /* ---------- 상태 ---------- */
 var S={members:{},events:{},votes:{},notices:{},reads:{},alerts:{},places:{},posts:{},results:{}};
-var ui={view:'list',calMonth:'',calSel:'',rfilter:'all',bcat:'전체',files:{keep:[],add:[]},tab:'events',filter:'all',showPast:false,open:{},form:null,authMode:'login',confirm:null,dlTouched:false};
+var ui={view:'list',calMonth:'',calSel:'',rfilter:'all',bcat:'전체',files:{keep:[],add:[]},tab:'events',filter:'all',showPast:false,af:'all',nf:'all',sd:null,open:{},form:null,authMode:'login',confirm:null,dlTouched:false};
 var me=null,myRole='member',amOwner=false,token=null,loaded=false,netErr=false;
 var pending=0,syncing=false,again=false,toastTimer=null;
 var canWrite=true;
@@ -317,7 +329,8 @@ async function act(a,p){
 function applySync(j){
   COLS.forEach(function(c){S[c]=j.data[c]||{};});
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
-  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods);
+  serverVer=(j.cfg&&j.cfg.ver)||'';
+  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings);
   me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;loaded=true;netErr=false;
 }
 async function syncNow(){
@@ -327,6 +340,7 @@ async function syncNow(){
   try{
     var j=await call('sync');
     applySync(j);
+    try{browserNotify();}catch(e2){}
   }catch(e){
     if(e&&e.code==='auth'){syncing=false;doLogout();return;}
     netErr=true;
@@ -350,7 +364,7 @@ function renderAuth(){
   (su?'<label class="field">비밀번호 확인<input class="inp" id="f-pin2" type="password" inputmode="numeric" maxlength="4" data-digits autocomplete="new-password"></label><label class="field">팀 가입 코드 (운영진에게 받은 코드)<input class="inp" id="f-code" type="text" maxlength="40" autocomplete="off"></label>':'')+
   '<p id="authErr" class="err" role="alert"></p>'+
   '<button class="btn pri" type="submit">'+(su?'가입하고 시작':'로그인')+'</button></form>'+
-  '<p class="hint">닉네임은 <b>이름</b>이에요. 같은 이름이 이미 있으면 이름 뒤에 구분 글자를 붙여 주세요. 예: <b>홍길동B</b></p></main>';
+  '<p class="hint">닉네임은 <b>이름</b>이에요. 같은 이름이 이미 있으면 이름 뒤에 구분 글자를 붙여 주세요. 예: <b>홍길동B</b></p><p class="ver">'+esc(APP_VER)+'</p></main>';
   updateStatus();
 }
 async function doAuth(){
@@ -404,8 +418,8 @@ function reminders(){
   var vote=[],eve=[];
   up.forEach(function(e){
     var mine=(S.votes[e.id+'_'+me]||{}).s,n=dayDiff(dlEff(e)),d=dayDiff(e.date);
-    if(!mine&&n>=0&&n<=3&&canWrite)vote.push({e:e,n:n});
-    if(d<=1&&mine!=='N')eve.push({e:e,d:d});
+    if(!mine&&n>=0&&n<=cfgS().remindDays&&canWrite)vote.push({e:e,n:n});
+    if(d<=cfgS().eveDays&&mine!=='N')eve.push({e:e,d:d});
   });
   return {vote:vote,eve:eve};
 }
@@ -435,7 +449,7 @@ function render(){
   if(!S.members[me]){doLogout();return;}
   if(root.dataset.screen!=='app'){
     root.dataset.screen='app';
-    root.innerHTML='<div id="hdr"></div><div id="banner"></div><div class="wrap"><div id="formSlot"></div><div id="list" class="list"></div></div>';
+    root.innerHTML='<div id="hdr"></div><div id="banner"></div><div class="wrap"><div id="formSlot"></div><div id="list" class="list"></div><p id="ver" class="ver"></p></div>';
     paintForm();
   }
   paintApp();
@@ -445,10 +459,11 @@ function paintApp(){
   function tab(k,l,b){return '<button class="tab" role="tab" data-act="tab" data-t="'+k+'" aria-selected="'+(ui.tab===k)+'">'+l+(b?'<span class="badge">'+b+'</span>':'')+'</button>';}
   h.innerHTML='<header class="top"><div class="wrap"><div class="top-in">'+logo()+
     '<div class="who"><span>'+esc(nick(me))+'</span><button class="linkbtn" data-act="logout">로그아웃</button></div></div>'+
-    '<div class="tabs" role="tablist">'+tab('events','일정',needCountNow())+tab('results','결과',0)+tab('notices','공지',unreadNotices())+tab('alerts','알림',alertTotal())+tab('board','전술',0)+tab('team','팀',0)+'</div></div></header>';
-  var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요. Apps Script에서 새 Code.gs를 붙여넣고 배포 관리 → 새 버전으로 배포해 주세요. (쿼터별 결과·영상 링크 등 새 기능이 동작하지 않아요)':'');
+    '<div class="tabs" role="tablist">'+tab('events','일정',needCountNow())+tab('results','결과',0)+tab('notices','공지',unreadNotices())+tab('alerts','알림',alertTotal())+tab('board','전술',0)+tab('team','팀',0)+(canManage()?tab('settings','설정',0):'')+'</div></div></header>';
+  var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요. Apps Script에서 새 Code.gs를 붙여넣고 배포 관리 → 새 버전으로 배포해 주세요. (설정·푸시·읽음 처리 등 새 기능이 동작하지 않아요)':'');
   document.getElementById('banner').innerHTML=msg?'<div class="banner"><div class="wrap">'+esc(msg)+'</div></div>':'';
-  document.getElementById('list').innerHTML=ui.tab==='events'?(ui.view==='cal'?calendarPage():eventsHTML()):ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():ui.tab==='results'?resultsHTML():teamHTML();
+  document.getElementById('list').innerHTML=ui.tab==='events'?(ui.view==='cal'?calendarPage():eventsHTML()):ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():ui.tab==='results'?resultsHTML():(ui.tab==='settings'&&canManage())?settingsHTML():teamHTML();
+  var vel=document.getElementById('ver');if(vel)vel.textContent='화면 '+APP_VER+' · 서버 '+(serverVer||'예전 버전')+(serverVer&&serverVer!==APP_VER?' (서버 업데이트 필요)':'');
 }
 function needCountNow(){return eventList().filter(needsVote).length;}
 function paintForm(){
@@ -468,6 +483,7 @@ function eventsHTML(){
   var un=unreadNotices(),ua=alertTotal(),out='';
   if(ua)out+='<button class="note-banner" data-act="tab" data-t="alerts">새 알림 '+ua+'건 ›</button>';
   if(un)out+='<button class="note-banner" data-act="tab" data-t="notices">읽지 않은 공지 '+un+'건 ›</button>';
+  noticeList().filter(function(n){return n.pinned;}).slice(0,3).forEach(function(n){out+='<button class="note-banner pinb" data-act="tab" data-t="notices">📌 '+esc(n.title)+' ›</button>';});
   out+=viewHead('다가오는 일정');
   out+='<div class="chips" role="group" aria-label="일정 필터">'+[['all','전체']].concat(ETYPES.map(function(t){return [t,t];}),[['need','투표 필요']]).map(function(c){return '<button class="chip" data-act="filter" data-f="'+c[0]+'" aria-pressed="'+(f===c[0])+'">'+(TCLS[c[0]]?'<span class="dot '+TCLS[c[0]]+'"></span>':'')+c[1]+'<i>'+cnt[c[0]]+'</i></button>';}).join('')+'</div>';
   if(!up.length){
@@ -525,14 +541,29 @@ function evCard(e,t,past){
 }
 
 /* 공지 */
-function noticesHTML(){
-  var list=noticeList(),total=memberCount(),out='';
-  out+='<div class="head-row"><h2>공지</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newnotice">+ 공지 작성</button>':'')+'</div>';
-  if(!list.length)return out+'<div class="card empty"><b>등록된 공지가 없어요</b>'+(canEditData()?'공지 작성으로 첫 공지를 올려 보세요.':'관리자가 공지를 올리면 여기에 보여요.')+'</div>';
-  list.forEach(function(n){out+=readCard(n.id,
-    '<div class="nt-top">'+(n.pinned?'<span class="tag pin">고정</span>':'')+(!S.reads[n.id+'_'+me]?'<span class="dot" aria-label="안 읽음"></span>':'')+'<span>'+dateOf(n.at)+' · '+esc(nick(n.by))+'</span></div>'+
+function rfChips(key,u,r){
+  var cur=ui[key]||'all';
+  return '<div class="chips" role="group" aria-label="읽음 필터">'+[['all','전체',u+r],['unread','안 읽음',u],['read','읽음',r]].map(function(c){return '<button class="chip" data-act="rf" data-k="'+key+'" data-f="'+c[0]+'" aria-pressed="'+(cur===c[0])+'">'+c[1]+'<i>'+c[2]+'</i></button>';}).join('')+'</div>';
+}
+function noticeCard(n){
+  return readCard(n.id,
+    '<div class="nt-top">'+(n.pinned?'<span class="tag pin">📌 고정</span>':'')+(!S.reads[n.id+'_'+me]?'<span class="dot" aria-label="안 읽음"></span>':'')+'<span>'+dateOf(n.at)+' · '+esc(nick(n.by))+'</span></div>'+
     '<h3 class="nt-title">'+esc(n.title)+'</h3><p class="nt-body">'+esc(n.body)+'</p>',
-    canEditData()?'<button class="btn sm" data-act="pinnotice" data-n="'+esc(n.id)+'">'+(n.pinned?'고정 해제':'상단 고정')+'</button><button class="btn sm" data-act="editnotice" data-n="'+esc(n.id)+'">수정</button><button class="btn sm danger" data-act="delnotice" data-n="'+esc(n.id)+'">'+(ui.confirm==='nt:'+n.id?'정말 삭제':'삭제')+'</button>':'');});
+    canEditData()?'<button class="btn sm" data-act="pinnotice" data-n="'+esc(n.id)+'">'+(n.pinned?'고정 해제':'상단 고정')+'</button><button class="btn sm" data-act="editnotice" data-n="'+esc(n.id)+'">수정</button><button class="btn sm danger" data-act="delnotice" data-n="'+esc(n.id)+'">'+(ui.confirm==='nt:'+n.id?'정말 삭제':'삭제')+'</button>':'');
+}
+function noticesHTML(){
+  var all=noticeList(),out='';
+  out+='<div class="head-row"><h2>공지</h2>'+(canEditData()?'<button class="btn pri sm" data-act="newnotice">+ 공지 작성</button>':'')+'</div>';
+  if(!all.length)return out+'<div class="card empty"><b>등록된 공지가 없어요</b>'+(canEditData()?'공지 작성으로 첫 공지를 올려 보세요.':'관리자가 공지를 올리면 여기에 보여요.')+'</div>';
+  var isU=function(n){return !S.reads[n.id+'_'+me];};
+  var u=all.filter(isU),r=all.length-u.length,f=ui.nf||'all';
+  out+=rfChips('nf',u.length,r);
+  if(u.length&&canWrite)out+='<div class="markall"><button class="btn sm" data-act="readall" data-k="notices">안 읽은 공지 모두 확인했어요 ('+u.length+')</button></div>';
+  var list=all.filter(function(n){return f==='all'||(f==='unread'?isU(n):!isU(n));});
+  if(!list.length)return out+'<div class="card empty"><b>'+(f==='unread'?'안 읽은 공지가 없어요':'확인한 공지가 없어요')+'</b></div>';
+  var pin=list.filter(function(n){return n.pinned;}),rest=list.filter(function(n){return !n.pinned;});
+  if(pin.length){out+='<p class="sub-h">📌 고정된 공지</p>';pin.forEach(function(n){out+=noticeCard(n);});}
+  if(rest.length){if(pin.length)out+='<p class="sub-h">일반 공지</p>';rest.forEach(function(n){out+=noticeCard(n);});}
   return out;
 }
 function dateOf(ts){var dt=new Date(ts||Date.now());return (dt.getMonth()+1)+'/'+dt.getDate()+'('+WD[dt.getDay()]+')';}
@@ -552,28 +583,102 @@ function readCard(id,body,extra){
 }
 
 /* 알림 */
+function alertTitle(a){var kind=a.kind==='new'?'새 일정':a.kind==='cancel'?'일정 취소':'일정 변경';return kind+' · '+a.type+' '+fmtMD(a.date)+' '+(a.time||'');}
+function alertCard(a){
+  var kind=a.kind==='new'?'새 일정':a.kind==='cancel'?'일정 취소':'일정 변경';
+  var lines=(a.changes||[]).map(function(c){return '<div>'+esc(c.f)+' <s>'+esc(c.from)+'</s> <span class="arrow">→</span> <b>'+esc(c.to)+'</b></div>';}).join('');
+  var body='<div class="nt-top"><span class="tag pk">'+kind+'</span>'+(alertIsUnread(a)?'<span class="dot" aria-label="안 읽음"></span>':'')+'<span>'+dateOf(a.at)+' · '+esc(nick(a.by))+'</span></div>'+
+    '<h3 class="nt-title">'+esc(a.type+' '+fmtMD(a.date)+' '+(a.time||''))+'</h3>'+
+    (lines?'<div class="chg">'+lines+'</div>':'<p class="hintline">'+esc(placeFull(a)||'장소 미정')+'</p>');
+  return readCard(a.id,body,canEditData()?'<button class="btn sm" data-act="sharealert" data-a="'+esc(a.id)+'">안내 문구 복사</button>':'');
+}
+function alertIsUnread(a){return a.by!==me&&!S.reads[a.id+'_'+me];}
+function bnState(){
+  try{if(typeof Notification==='undefined')return 'none';if(Notification.permission==='denied')return 'denied';return (Notification.permission==='granted'&&localStorage.getItem('nova_bn')==='1')?'on':'off';}catch(e){return 'none';}
+}
+function pushCardHTML(){
+  var st=cfgS(),bn=bnState(),h='<article class="card pushc"><h3 class="nt-title">휴대폰·크롬으로 알림 받기</h3>';
+  if(!st.topic)return h+'<p class="hintline">관리자가 설정 탭에서 설정을 저장하면 푸시 주소가 만들어져요.</p></article>';
+  if(!st.push)h+='<p class="hintline">지금은 관리자가 푸시를 꺼 둔 상태예요.</p>';
+  h+='<ol class="steps"><li>휴대폰에 <b>ntfy</b> 앱을 설치해요 (안드로이드·아이폰 모두 무료)</li><li>앱에서 <b>+</b>를 눌러 아래 주제 이름을 넣고 구독해요 (서버는 기본값 ntfy.sh)</li><li>크롬(PC)은 <a href="https://ntfy.sh/app" target="_blank" rel="noopener">ntfy.sh/app</a>에서 같은 주제를 구독하고 알림을 허용해요</li></ol>'+
+    '<div class="topicbox"><code>'+esc(st.topic)+'</code><button class="btn sm" data-act="copytopic">복사</button></div>'+
+    '<p class="hintline">팀원에게만 보이는 비밀 주제예요. 밖에 공개하지 마세요.</p>';
+  h+='<div class="ev-foot">'+(bn==='none'?'<span class="none">이 브라우저는 알림을 지원하지 않아요</span>':bn==='denied'?'<span class="none">브라우저에서 알림이 차단돼 있어요 (주소창 자물쇠에서 허용)</span>':bn==='on'?'<button class="btn sm" data-act="bnoff">이 브라우저 알림 끄기</button><span class="none">페이지가 열려 있을 때만 떠요</span>':'<button class="btn sm" data-act="bnon">이 브라우저에서도 알림 켜기</button><span class="none">페이지가 열려 있을 때만 떠요</span>')+'</div></article>';
+  return h;
+}
 function alertsHTML(){
-  var r=reminders(),list=alertList(),out='<div class="head-row"><h2>알림</h2></div><p class="hintline">이 페이지를 열 때 확인할 수 있는 알림이에요. 휴대폰 푸시는 가지 않아요.</p>';
-  if(r.vote.length||r.eve.length){
-    out+='<p class="sub-h">내 일정 알림</p>';
+  var r=reminders(),list=alertList(),f=ui.af||'all';
+  var out='<div class="head-row"><h2>알림</h2></div>'+pushCardHTML();
+  var uA=list.filter(alertIsUnread),rA=list.filter(function(a){return !alertIsUnread(a);});
+  var uCnt=uA.length+r.vote.length+r.eve.length;
+  out+=rfChips('af',uCnt,rA.length);
+  if(uA.length&&canWrite)out+='<div class="markall"><button class="btn sm" data-act="readall" data-k="alerts">변경 알림 모두 확인했어요 ('+uA.length+')</button></div>';
+  var showU=f!=='read',showR=f!=='unread';
+  if(showU&&(r.vote.length||r.eve.length)){
+    out+='<p class="sub-h">내 일정 알림 · 처리 필요</p>';
     r.vote.forEach(function(x){
       out+='<article class="card nt"><div class="nt-top"><span class="tag pk">투표 마감 '+(x.n===0?'오늘':'D-'+x.n)+'</span></div><h3 class="nt-title">'+esc(fmtDT(x.e)+' '+(x.e.title||x.e.type))+'</h3><p class="hintline">아직 투표하지 않았어요. 투표는 '+fmtMD(dlEff(x.e))+'에 마감돼요.</p><div class="ev-foot"><button class="btn pri sm" data-act="gotovote">투표하러 가기</button></div></article>';
     });
     r.eve.forEach(function(x){
-      out+='<article class="card nt"><div class="nt-top"><span class="tag pk">'+(x.d===0?'오늘 일정':'내일 일정')+'</span></div><h3 class="nt-title">'+esc(fmtDT(x.e)+' '+(x.e.title||x.e.type))+'</h3><p class="hintline">'+esc(x.e.place||'장소 미정')+mapLink(x.e.map)+'</p></article>';
+      out+='<article class="card nt"><div class="nt-top"><span class="tag pk">'+(x.d===0?'오늘 일정':x.d===1?'내일 일정':x.d+'일 뒤 일정')+'</span></div><h3 class="nt-title">'+esc(fmtDT(x.e)+' '+(x.e.title||x.e.type))+'</h3><p class="hintline">'+esc(x.e.place||'장소 미정')+mapLink(x.e.map)+'</p></article>';
     });
   }
-  out+='<p class="sub-h">일정 변경 알림 · 최근 14일</p>';
-  if(!list.length)return out+'<div class="card empty"><b>최근 변경된 일정이 없어요</b>일정이 새로 등록되거나 바뀌면 여기에 쌓여요.</div>';
-  list.forEach(function(a){
-    var kind=a.kind==='new'?'새 일정':a.kind==='cancel'?'일정 취소':'일정 변경';
-    var lines=(a.changes||[]).map(function(c){return '<div>'+esc(c.f)+' <s>'+esc(c.from)+'</s> <span class="arrow">→</span> <b>'+esc(c.to)+'</b></div>';}).join('');
-    var body='<div class="nt-top"><span class="tag pk">'+kind+'</span>'+(a.by!==me&&!S.reads[a.id+'_'+me]?'<span class="dot" aria-label="안 읽음"></span>':'')+'<span>'+dateOf(a.at)+' · '+esc(nick(a.by))+'</span></div>'+
-      '<h3 class="nt-title">'+esc(a.type+' '+fmtMD(a.date)+' '+(a.time||''))+'</h3>'+
-      (lines?'<div class="chg">'+lines+'</div>':'<p class="hintline">'+esc(placeFull(a)||'장소 미정')+'</p>');
-    out+=readCard(a.id,body,canEditData()?'<button class="btn sm" data-act="sharealert" data-a="'+esc(a.id)+'">안내 문구 복사</button>':'');
-  });
+  if(showU&&uA.length){out+='<p class="sub-h">안 읽은 변경 알림 · '+uA.length+'</p>';uA.forEach(function(a){out+=alertCard(a);});}
+  if(showR&&rA.length){out+='<p class="sub-h">확인한 변경 알림 · 최근 14일</p>';rA.forEach(function(a){out+=alertCard(a);});}
+  if(!list.length)out+='<div class="card empty"><b>최근 변경된 일정이 없어요</b>일정이 새로 등록되거나 바뀌면 여기에 쌓여요.</div>';
+  else if(f==='unread'&&!uCnt)out+='<div class="card empty"><b>안 읽은 알림이 없어요</b></div>';
+  else if(f==='read'&&!rA.length)out+='<div class="card empty"><b>확인한 알림이 아직 없어요</b></div>';
   return out;
+}
+
+/* 관리자 설정 탭 */
+function settingsHTML(){
+  var s=Object.assign({},cfgS(),ui.sd||{});
+  function num(id,label,v,min,max,unit,hint){return '<label class="field">'+label+'<span class="unitrow"><input class="inp" id="'+id+'" type="number" inputmode="numeric" min="'+min+'" max="'+max+'" value="'+esc(String(v))+'"><span class="unit">'+unit+'</span></span>'+(hint?'<small class="hintline">'+hint+'</small>':'')+'</label>';}
+  var hours='';for(var i=0;i<24;i++)hours+='<option value="'+i+'"'+(Number(s.hour)===i?' selected':'')+'>'+(i<10?'0':'')+i+':00</option>';
+  var ex=addDays(21),dd=Number(s.dlDays);
+  return '<div class="head-row"><h2>설정</h2><span class="none">마스터·관리자만 보여요</span></div>'+
+   '<div class="card"><h3 class="nt-title">투표 · 알림 기간</h3><div class="form">'+
+   num('st-dl','기본 투표 마감일',s.dlDays,0,60,'일 전','일정 날짜의 며칠 전을 기본 마감일로 할지 정해요. 0이면 당일까지예요. 예) '+fmtMD(ex)+' 일정 → '+(isNaN(dd)||s.dlDays===''?'-':fmtMD(shift(ex,-dd)))+' 마감. 이미 등록된 일정은 바뀌지 않아요.')+
+   num('st-rd','투표 마감 알림 시작',s.remindDays,0,14,'일 전부터','아직 투표하지 않은 사람에게 마감 며칠 전부터 알릴지 정해요.')+
+   num('st-ev','일정 알림 시작',s.eveDays,0,3,'일 전부터','0이면 당일만, 1이면 전날과 당일에 알려요.')+
+   '</div></div>'+
+   '<div class="card"><h3 class="nt-title">푸시 알림 (휴대폰·크롬)</h3><div class="form">'+
+   '<label class="chk"><input type="checkbox" id="st-push"'+(s.push?' checked':'')+'>푸시 알림 사용</label>'+
+   '<label class="field">매일 보내는 시각<select class="inp" id="st-hour">'+hours+'</select><small class="hintline">투표 마감·일정 알림을 하루 한 번 이 시각 무렵에 팀 전체에 보내요. (시간 단위 트리거라 몇 분 늦을 수 있어요)</small></label>'+
+   '<label class="chk"><input type="checkbox" id="st-pn"'+(s.pushNew?' checked':'')+'>일정 등록·변경·취소를 바로 푸시</label>'+
+   '<p class="hintline">팀원들은 알림 탭의 안내대로 ntfy 앱에서 주제를 구독해야 받을 수 있어요.'+(s.topic?' 주제: <code>'+esc(s.topic)+'</code>':' 저장하면 주제가 만들어져요.')+'</p>'+
+   '<div class="form-actions"><button type="button" class="btn" data-act="testpush">테스트 푸시 보내기</button><button type="button" class="btn pri" data-act="savesettings">설정 저장</button></div></div></div>';
+}
+function readSettingsDOM(){
+  var g=function(id){return document.getElementById(id);};
+  if(!g('st-dl'))return ui.sd;
+  return {dlDays:g('st-dl').value,remindDays:g('st-rd').value,eveDays:g('st-ev').value,hour:g('st-hour').value,push:g('st-push').checked,pushNew:g('st-pn').checked};
+}
+async function saveSettings(){
+  var d=readSettingsDOM();if(!d)return;
+  function ck(v,lo,hi,name){var n=Number(v);if(v===''||!isFinite(n)||n!==Math.floor(n)||n<lo||n>hi){toast(name+'은(는) '+lo+'~'+hi+' 사이 숫자로 입력해 주세요.');return null;}return n;}
+  var a=ck(d.dlDays,0,60,'기본 투표 마감일');if(a===null)return;
+  var b=ck(d.remindDays,0,14,'마감 알림 시작');if(b===null)return;
+  var c=ck(d.eveDays,0,3,'일정 알림 시작');if(c===null)return;
+  var page=/^https?:/.test(location.href)?location.href.split('#')[0].split('?')[0]:'';
+  var ok=await act('saveSettings',{data:{dlDays:a,remindDays:b,eveDays:c,hour:Number(d.hour),push:d.push,pushNew:d.pushNew,page:page}});
+  if(ok){ui.sd=null;paintApp();toast('설정을 저장했어요.');}
+}
+/* 이 브라우저 알림: 페이지가 열려 있는 동안 새 알림을 띄운다 */
+function browserNotify(){
+  if(bnState()!=='on'||!loaded)return;
+  var seen={},init=false,items=[];
+  try{var raw=localStorage.getItem('nova_seen');if(raw)seen=JSON.parse(raw)||{};else init=true;}catch(e){init=true;}
+  alertList().forEach(function(a){if(alertIsUnread(a))items.push({k:a.id,t:alertTitle(a),b:placeFull(a)||''});});
+  var r=reminders();
+  r.vote.forEach(function(x){items.push({k:'v'+x.e.id+todayStr(),t:'투표 마감 '+(x.n===0?'오늘':'D-'+x.n),b:fmtDT(x.e)+' '+(x.e.title||x.e.type)});});
+  r.eve.forEach(function(x){items.push({k:'e'+x.e.id+todayStr(),t:(x.d===0?'오늘':'내일')+' 일정',b:fmtDT(x.e)+' '+(x.e.title||x.e.type)});});
+  var fresh=items.filter(function(i){return !seen[i.k];});
+  items.forEach(function(i){seen[i.k]=1;});
+  try{var ks=Object.keys(seen);if(ks.length>300){var n2={};ks.slice(-200).forEach(function(k){n2[k]=1;});seen=n2;}localStorage.setItem('nova_seen',JSON.stringify(seen));}catch(e){}
+  if(init)return;
+  fresh.slice(0,3).forEach(function(i){try{new Notification('NOVA · '+i.t,{body:i.b,tag:i.k});}catch(e){}});
 }
 
 /* 팀: 멤버, 자주 가는 장소 */
@@ -660,7 +765,7 @@ function collectEvent(){
   if(!date||!time)return err('날짜와 시간을 입력해 주세요.');
   var map=val('fe-map').trim();if(map&&!safeUrl(map))return err('지도 링크는 https:// 로 시작하는 주소여야 해요.');
   var dl=val('fe-deadline');
-  if(!dl){dl=shift(date,-7);if(dl<todayStr())dl=todayStr();if(dl>date)dl=date;}
+  if(!dl){dl=shift(date,-cfgS().dlDays);if(dl<todayStr())dl=todayStr();if(dl>date)dl=date;}
   if(dl>date)return err('투표 마감일은 일정 날짜보다 늦을 수 없어요.');
   return {type:type,date:date,time:time,place:val('fe-place').trim(),detail:val('fe-detail').trim(),map:map,title:val('fe-title').trim(),deadline:dl,memo:val('fe-memo').trim()};
 }
@@ -1050,11 +1155,13 @@ root.addEventListener('input',function(ev){
   var t=ev.target;if(!t)return;
   if(t.hasAttribute&&t.hasAttribute('data-digits'))t.value=t.value.replace(/\D/g,'');
   if(t.id==='fe-deadline')ui.dlTouched=true;
+  if(t.id&&t.id.indexOf('st-')===0)ui.sd=readSettingsDOM();
   if(t.classList&&(t.classList.contains('p-us')||t.classList.contains('p-them')))updateResTotal();
 });
 root.addEventListener('change',function(ev){
   var t=ev.target;if(!t)return;
-  if(t.id==='fe-date'&&!ui.dlTouched&&t.value){var d=shift(t.value,-7);if(d<todayStr())d=todayStr();if(d>t.value)d=t.value;document.getElementById('fe-deadline').value=d;}
+  if(t.id&&t.id.indexOf('st-')===0)ui.sd=readSettingsDOM();
+  if(t.id==='fe-date'&&!ui.dlTouched&&t.value){var d=shift(t.value,-cfgS().dlDays);if(d<todayStr())d=todayStr();if(d>t.value)d=t.value;document.getElementById('fe-deadline').value=d;}
   if(t.id==='fb-pick'){addPicked(t);return;}
   if(t.id==='fr-ev'){var oe=S.events[t.value],oi=document.getElementById('fr-opp');if(oi&&!oi.value.trim())oi.value=guessOpp(oe);return;}
   if(t.classList&&t.classList.contains('sc-m')){readResDraft();paintForm();return;}
@@ -1080,6 +1187,28 @@ root.addEventListener('click',async function(ev){
       if(!(await act('vote',{e:d.e,s:ns})))await syncNow();
       paintApp();break;
     }
+    case 'rf':ui[d.k]=d.f;paintApp();break;
+    case 'readall':{
+      var ids=d.k==='notices'?noticeList().filter(function(n){return !S.reads[n.id+'_'+me];}).map(function(n){return n.id;}):alertList().filter(alertIsUnread).map(function(a){return a.id;});
+      if(!ids.length)break;
+      ids.forEach(function(i){S.reads[i+'_'+me]={n:i,m:me,t:Date.now()};});paintApp();
+      if(!(await act('readMany',{ids:ids})))await syncNow();
+      paintApp();break;
+    }
+    case 'savesettings':await saveSettings();break;
+    case 'testpush':{ui.sd=readSettingsDOM();if(await act('pushTest',{}))toast('테스트 푸시를 보냈어요. 구독한 기기를 확인해 보세요.');break;}
+    case 'copytopic':{try{await navigator.clipboard.writeText(cfgS().topic);toast('주제 이름을 복사했어요.');}catch(e){toast('주제: '+cfgS().topic);}break;}
+    case 'bnon':{
+      try{
+        var perm=await Notification.requestPermission();
+        if(perm==='granted'){
+          localStorage.setItem('nova_bn','1');localStorage.removeItem('nova_seen');browserNotify();
+          try{new Notification('NOVA',{body:'이 브라우저 알림을 켰어요.'});}catch(e3){toast('알림을 켰어요. (이 브라우저는 미리보기 알림을 못 띄울 수 있어요)');}
+        }else toast('알림이 허용되지 않았어요.');
+      }catch(e){toast('이 브라우저에서는 알림을 켤 수 없어요.');}
+      paintApp();break;
+    }
+    case 'bnoff':{try{localStorage.setItem('nova_bn','0');}catch(e){}paintApp();break;}
     case 'readitem':{
       S.reads[d.n+'_'+me]={n:d.n,m:me,t:Date.now()};paintApp();
       if(!(await act('read',{n:d.n})))await syncNow();

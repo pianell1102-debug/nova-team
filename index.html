@@ -309,7 +309,7 @@ var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
 var API_URL='https://script.google.com/macros/s/AKfycbzOjpUdaDye0GfcIyncB1XpUw6NUUyOmIqOTvLg7P2nSkKKfviK2koQHGhBNnLeFn7tyg/exec';
 var POLL_MS=45000;
-var APP_VER='v3.9 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v4.0 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -447,7 +447,7 @@ async function act(a,p){
     var j=null;
     try{j=await call(a,Object.assign({sync:1},p||{}));}finally{pending--;}
     /* 쓰기 응답에 최신 데이터가 같이 오므로 다시 불러오지 않는다 */
-    if(j&&j.data&&pending===0&&!syncing){applySync(j);render();}
+    if(j&&j.data&&pending===0&&!syncing){applySync(j);renderSoft();}
     else await syncNow();
   });
 }
@@ -478,7 +478,7 @@ async function syncNow(){
     netErr=true;
   }
   syncing=false;
-  render();
+  renderSoft();
   if(again){again=false;syncNow();}
 }
 function updateStatus(){
@@ -594,8 +594,44 @@ function render(){
   }
   paintApp();
 }
+/* 화면을 다시 그려도 입력 중인 글이 지워지지 않게: 다시 그리기 전에 고친 입력칸(과 커서)을 기억했다가 되돌려요 */
+function inputKey(el,seen){
+  var k=(el.id||'')+'|'+el.tagName+'|'+(el.type||'')+'|'+Array.prototype.filter.call(el.attributes,function(a){return /^data-/.test(a.name);}).map(function(a){return a.name+'='+a.value;}).join('&');
+  seen[k]=(seen[k]||0)+1;return k+'#'+seen[k];
+}
+function snapInputs(box){
+  var out=[],seen={},ae=document.activeElement;
+  if(!box)return out;
+  box.querySelectorAll('input,textarea').forEach(function(el){
+    if(/^(checkbox|radio|button|submit|file|hidden)$/.test(el.type))return;
+    var key=inputKey(el,seen),dirty=el.value!==el.defaultValue,focused=(el===ae);
+    if(dirty||focused)out.push({key:key,value:el.value,dirty:dirty,focused:focused,s:el.selectionStart,e:el.selectionEnd});
+  });
+  return out;
+}
+function restoreInputs(box,snap){
+  if(!box||!snap.length)return;
+  var map={},seen={};
+  box.querySelectorAll('input,textarea').forEach(function(el){
+    if(/^(checkbox|radio|button|submit|file|hidden)$/.test(el.type))return;
+    map[inputKey(el,seen)]=el;
+  });
+  snap.forEach(function(r){
+    var el=map[r.key];if(!el)return;
+    if(r.dirty&&el.value!==r.value)el.value=r.value;
+    if(r.focused){try{el.focus({preventScroll:true});if(r.s!=null&&el.setSelectionRange)el.setSelectionRange(r.s,r.e);}catch(e){}}
+  });
+}
+function isTyping(){
+  var ae=document.activeElement,l=document.getElementById('list');
+  return !!(ae&&l&&l.contains(ae)&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&!/^(checkbox|radio|button|submit|file)$/.test(ae.type));
+}
+var softPending=false;
+function renderSoft(){if(isTyping()){softPending=true;return;}render();}
 function paintApp(){
   var h=document.getElementById('hdr');if(!h)return;
+  var snap=snapInputs(document.getElementById('list'));
+  softPending=false;
   function tab(k,l,b){return '<button class="tab" role="tab" data-act="tab" data-t="'+k+'" aria-selected="'+(ui.tab===k)+'">'+l+(b?'<span class="badge">'+b+'</span>':'')+'</button>';}
   var oldTabs=h.querySelector('.tabs'),oldSL=oldTabs?oldTabs.scrollLeft:0;
   h.innerHTML='<header class="top"><div class="wrap"><div class="top-in">'+logo()+
@@ -606,6 +642,7 @@ function paintApp(){
   var msg=netErr?'서버에 연결하지 못했어요. 마지막으로 불러온 내용을 보여드려요.':(oldServer&&canManage()?'서버 코드가 예전 버전이에요(지금 서버: '+(serverVer||'버전 표시 없음')+'). Apps Script에 최신 Code.gs 전체를 붙여넣고 배포 관리 → 연필 → 새 버전으로 배포해 주세요. (설정 탭·읽음 처리 등 새 기능이 동작하지 않아요)':'');
   document.getElementById('banner').innerHTML=msg?'<div class="banner"><div class="wrap">'+esc(msg)+'</div></div>':(myInit?'<div class="banner"><div class="wrap"><button class="linkbtn" data-act="pinform" style="font-weight:700">초기 비밀번호(1234)를 쓰고 있어요. 여기를 눌러 내 비밀번호로 바꿔 주세요 ›</button></div></div>':'');
   document.getElementById('list').innerHTML=ui.tab==='events'?(ui.view==='cal'?calendarPage():eventsHTML()):ui.tab==='notices'?noticesHTML():ui.tab==='alerts'?alertsHTML():ui.tab==='board'?boardHTML():ui.tab==='results'?resultsHTML():(ui.tab==='settings'&&canManage())?settingsHTML():teamHTML();
+  restoreInputs(document.getElementById('list'),snap);
   decorate();
   var vel=document.getElementById('ver');if(vel)vel.textContent='화면 '+APP_VER+' · 서버 '+(serverVer||'예전 버전')+(oldServer?' (서버 업데이트 필요)':'');
 }
@@ -1478,6 +1515,7 @@ root.addEventListener('click',async function(ev){
   if(configured()&&token){root.dataset.screen='wait';root.innerHTML='<p class="loading">불러오는 중…</p>';syncNow();}
   else{token=null;renderAuth();}
   setInterval(function(){if(!document.hidden&&token&&loaded)syncNow();},POLL_MS);
+  document.addEventListener('focusout',function(){if(!softPending)return;setTimeout(function(){if(softPending&&!isTyping()){softPending=false;render();}},2500);});
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&token&&loaded)syncNow();});
 })();
 })();

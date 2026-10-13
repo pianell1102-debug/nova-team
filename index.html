@@ -89,7 +89,7 @@ a{color:inherit}
 .need{font-size:12px;font-weight:600;color:var(--maybe)}
 .ev-title{margin-top:2px;font-size:17px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
 .ev-meta,.ev-sub{margin-top:2px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
-.votes{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.votes{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .vbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 4px;font-weight:600;font-size:14px}
 .vbtn[data-s="Y"][aria-pressed="true"]{background:var(--yes-soft);border-color:var(--yes);color:var(--yes)}
 .vbtn[data-s="N"][aria-pressed="true"]{background:var(--no-soft);border-color:var(--no);color:var(--no)}
@@ -137,10 +137,12 @@ a{color:inherit}
 .att .vbtn{min-width:0}
 .votes.att2{grid-template-columns:repeat(2,1fr)}
 .votes.att1{grid-template-columns:1fr}
+.votes.att3{grid-template-columns:repeat(3,1fr)}
 .vbtn.ay[aria-pressed=true]{background:var(--yes-soft);border-color:var(--yes);color:var(--yes)}
 .vbtn.an[aria-pressed=true]{background:var(--no-soft);border-color:var(--no);color:var(--no)}
 .vbtn.ax[aria-pressed=true]{background:var(--maybe-soft);border-color:var(--maybe);color:var(--maybe)}
 .att-nt{display:flex;gap:8px}
+.att-sub{font-size:12px;color:var(--muted);margin:-4px 0 0}
 .attlog{grid-column:1/-1;min-width:0;border-top:1px dashed var(--line);padding-top:8px}
 .attlog ul{list-style:none;margin:4px 0 8px;padding:0;font-size:13px}
 .attlog li{padding:3px 0;overflow-wrap:anywhere}
@@ -305,9 +307,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbydfHRjEUJq7z1S0dLYIDo9E9Y_wwhqyGMEnXznnFDHbDQcL5-TthFhYuyKUoBOkut9wg/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbzOjpUdaDye0GfcIyncB1XpUw6NUUyOmIqOTvLg7P2nSkKKfviK2koQHGhBNnLeFn7tyg/exec';
 var POLL_MS=45000;
-var APP_VER='v3.7 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v3.9 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -355,31 +357,50 @@ function stOf(id){var m=S.members[id];return m&&(m.st==='rest'||m.st==='injured'
 function stLabel(id){var t=stOf(id);return t==='rest'?'휴식':t==='injured'?'부상':'';}
 function stBadge(id){var t=stOf(id);return t?'<span class="st '+t+'">'+stLabel(id)+'</span>':'';}
 function lateOf(x){return !!(x&&(x.lt||x.ey));}
+/* 지각·조퇴 메모(ln)와 일반 메모(nt)는 따로 저장돼요. ln이 없는 예전 데이터는 지각·조퇴와 함께 쓴 nt를 지각·조퇴 메모로 봐요. */
+function lnOf(x){return !x?'':(x.ln!==undefined?x.ln:(lateOf(x)?(x.nt||''):''));}
+function ntOf(x){return !x?'':((x.ln!==undefined||!lateOf(x))?(x.nt||''):'');}
 function attOf(eid,id){return S.attend[eid+'_'+id]||null;}
-function attBadges(eid,id){var x=attOf(eid,id);if(!x)return '';return (lateOf(x)?'<span class="st late">지각·조퇴</span>':'')+(x.nt?'<span class="st note">'+esc(x.nt)+'</span>':'');}
+function attBadges(eid,id){var x=attOf(eid,id);if(!x)return '';return (lateOf(x)?'<span class="st late">지각·조퇴</span>':'')+(lnOf(x)?'<span class="st note">'+esc(lnOf(x))+'</span>':'')+(ntOf(x)?'<span class="st note">'+esc(ntOf(x))+'</span>':'');}
 function attPanel(e){
-  var x=attOf(e.id,me)||{},eid=esc(e.id),vs=(S.votes[e.id+'_'+me]||{}).s,closed=locked(e);
-  var b=function(k,l,on,cls){return '<button class="vbtn '+cls+'" data-act="att" data-e="'+eid+'" data-k="'+k+'" aria-pressed="'+on+'">'+l+'</button>';};
-  var need=closed&&!x.p&&(!vs||vs==='M'),has=!!(x.p||lateOf(x)||x.nt),open=need||has||!!(ui.attOpen&&ui.attOpen[e.id]);
+  var x=attOf(e.id,me)||{},eid=esc(e.id),v0=(S.votes[e.id+'_'+me]||{}).s,vote=(v0==='Y'||v0==='N')?v0:'',closed=locked(e);
+  if(!closed&&vote!=='Y')return '';   /* 마감 전에는 참석으로 투표한 사람만 지각·조퇴를 알릴 수 있어요 */
+  var sel=lateOf(x)?'L':(x.p||'');     /* 지금 고른 것: 참가(Y) / 불참(N) / 지각·조퇴(L) 중 하나 */
+  var need=closed&&!vote&&!sel,has=!!(x.p||lateOf(x)||lnOf(x)||ntOf(x)),open=need||has||!!(ui.attOpen&&ui.attOpen[e.id]);
   if(!open){
-    var msg=closed?'투표 마감! <b>'+({Y:'참석',N:'불참'}[vs])+'</b> 투표대로 진행돼요. 바뀐 게 없으면 따로 할 일은 없어요.':'참석이어도 늦게 오거나 일찍 가야 하면 미리 알려 주세요. 모두에게 보여요.';
+    var msg=closed?'투표 마감! <b>'+({Y:'참석',N:'불참'}[vote])+'</b> 투표대로 진행돼요. 바뀐 게 없으면 따로 할 일은 없어요.':'참석이어도 늦게 오거나 일찍 가야 하면 미리 알려 주세요. 모두에게 보여요.';
     return '<div class="att"><p class="att-h">'+msg+'</p><button class="btn sm" data-act="attopen" data-e="'+eid+'">'+(closed?'변경·지각·조퇴 표시':'지각·조퇴 알리기')+'</button></div>';
   }
-  var head=need?'투표가 마감됐어요. '+(vs==='M'?'미정으로 투표했어요. ':'투표를 하지 않았어요. ')+'참가·불참을 표시해 주세요.':(closed?'투표 마감 후 바뀐 내용이나 지각·조퇴가 있으면 표시해 주세요. 바뀐 내용은 기록으로 남아 모두에게 보여요.':'늦게 오거나 일찍 가야 하면 표시해 주세요. 모두에게 보여요.');
-  return '<div class="att"><p class="att-h">'+head+(closed&&vs&&vs!=='M'?' <span class="none">(내 투표: '+({Y:'참석',N:'불참'}[vs])+')</span>':'')+'</p>'+
-    (closed?'<div class="votes att2">'+b('Y','참가',x.p==='Y','ay')+b('N','불참',x.p==='N','an')+'</div>':'')+
-    '<div class="votes att1">'+b('lt','지각·조퇴',lateOf(x),'ax')+'</div>'+
-    '<div class="att-nt"><input type="text" maxlength="40" data-attnote="'+eid+'" value="'+esc(x.nt||'')+'" placeholder="몇 분 늦거나 일찍 가는지 (예: 20분 늦어요)" aria-label="특이사항 메모"><button class="btn sm" data-act="att" data-e="'+eid+'" data-k="nt">저장</button></div></div>';
+  var opts=[];   /* 투표한 것과 같은 버튼은 보여주지 않아요 */
+  if(closed){
+    if(vote!=='Y')opts.push(['Y','참가','ay']);
+    if(vote!=='N')opts.push(['N','불참','an']);
+  }
+  opts.push(['L','지각·조퇴','ax']);
+  var btns=opts.map(function(o){return '<button class="vbtn '+o[2]+'" data-act="att" data-e="'+eid+'" data-k="'+o[0]+'" aria-pressed="'+(sel===o[0])+'">'+o[1]+'</button>';}).join('');
+  var head=need?'투표가 마감됐어요. 투표를 하지 않았어요. 아래에서 하나를 골라 주세요.':(closed?'바뀐 내용이 있으면 하나만 골라 주세요. 참가·불참이 바뀌면 기록으로 남아 모두에게 보여요.':'늦게 오거나 일찍 가야 하면 눌러 주세요. 모두에게 보여요.');
+  return '<div class="att"><p class="att-h">'+head+(closed&&vote?' <span class="none">(내 투표: '+({Y:'참석',N:'불참'}[vote])+')</span>':'')+'</p>'+
+    '<div class="votes att'+opts.length+'">'+btns+'</div>'+
+    (sel==='L'?'<div class="att-nt"><input type="text" maxlength="40" data-attln="'+eid+'" value="'+esc(lnOf(x))+'" placeholder="몇 분 늦거나 일찍 가는지 (예: 20분 늦어요)" aria-label="지각·조퇴 메모"><button class="btn sm" data-act="att" data-e="'+eid+'" data-k="ln">저장</button></div><p class="att-sub">지각·조퇴를 풀거나 참가·불참을 바꾸면 이 메모는 사라져요.</p>':'')+
+    '<div class="att-nt"><input type="text" maxlength="40" data-attnote="'+eid+'" value="'+esc(ntOf(x))+'" placeholder="일반 메모 (상태를 바꿔도 남아요)" aria-label="일반 메모"><button class="btn sm" data-act="att" data-e="'+eid+'" data-k="nt">저장</button></div></div>';
 }
 var ATL={Y:'참석',N:'불참',M:'미정','':'미투표'};
 function hm(ts){var d=new Date(ts||Date.now()),p=function(n){return (n<10?'0':'')+n;};return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());}
 function attLogBlock(e){
   var logs=Object.keys(S.attlog).map(function(k){return Object.assign({id:k},S.attlog[k]);}).filter(function(l){return l.e===e.id&&S.members[l.m];}).sort(function(a,b){return (a.t||0)-(b.t||0);});
-  var notes=Object.keys(S.attend).map(function(k){return S.attend[k];}).filter(function(x){return x.e===e.id&&S.members[x.m]&&(lateOf(x)||x.nt);});
+  var notes=Object.keys(S.attend).map(function(k){return S.attend[k];}).filter(function(x){return x.e===e.id&&S.members[x.m]&&(lateOf(x)||lnOf(x)||ntOf(x));});
   if(!logs.length&&!notes.length)return '';
   var h='<div class="attlog">';
   if(logs.length)h+='<div class="grp-h">마감 후 변경 '+logs.length+'</div><ul>'+logs.map(function(l){return '<li><b>'+esc(nick(l.m))+'</b> '+ATL[l.f||'']+' → <b class="to-'+(l.to||'x')+'">'+ATL[l.to||'']+'</b><time>'+hm(l.t)+'</time>'+(canManage()?'<button class="btn sm danger lgdel" data-act="dellog" data-l="'+esc(l.id)+'">'+(ui.confirm==='lg:'+l.id?'정말 삭제':'삭제')+'</button>':'')+'</li>';}).join('')+'</ul>';
-  if(notes.length)h+='<div class="grp-h">지각·조퇴 안내 '+notes.length+'</div><ul>'+sortIds(notes.map(function(x){return x.m;})).map(function(m){var x=S.attend[e.id+'_'+m];return '<li><b>'+esc(nick(m))+'</b> '+(lateOf(x)?'<span class="st late">지각·조퇴</span>':'')+(x.nt?' '+esc(x.nt):'')+'</li>';}).join('')+'</ul>';
+  if(notes.length){
+    var nb=function(m,w){return canManage()?'<button class="btn sm danger lgdel" data-act="delnote" data-e="'+esc(e.id)+'" data-m="'+esc(m)+'" data-w="'+w+'">'+(ui.confirm==='nt:'+e.id+'_'+m+'_'+w?'정말 삭제':'삭제')+'</button>':'';};
+    h+='<div class="grp-h">지각·조퇴·메모 '+notes.length+'</div><ul>'+sortIds(notes.map(function(x){return x.m;})).map(function(m){
+      var x=S.attend[e.id+'_'+m],ln=lnOf(x),nt=ntOf(x),r='';
+      if(lateOf(x)||ln)r+='<li><b>'+esc(nick(m))+'</b> <span class="st late">지각·조퇴</span>'+(ln?' '+esc(ln)+nb(m,'ln'):'')+'</li>';
+      if(nt)r+='<li><b>'+esc(nick(m))+'</b> <span class="st note">메모</span> '+esc(nt)+nb(m,'nt')+'</li>';
+      return r;
+    }).join('')+'</ul>';
+  }
   return h+'</div>';
 }
 function activeIds(){return Object.keys(S.members).filter(function(id){return !stOf(id);});}
@@ -442,7 +463,7 @@ function applySync(j){
   COLS.forEach(function(c){S[c]=j.data[c]||{};});
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
   serverVer=(j.cfg&&j.cfg.ver)||'';
-  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings&&j.cfg.status&&j.cfg.attend&&j.cfg.attlog);
+  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings&&j.cfg.status&&j.cfg.attend&&j.cfg.attlog&&j.cfg.attnote);
   me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;myInit=!!j.me.init;loaded=true;netErr=false;
 }
 async function syncNow(){
@@ -649,7 +670,7 @@ function evCard(e,t,past){
   if(e.memo)sub.push(e.memo);
   var pct=function(c){return total?(c/total*100):0;};
   var mg=canEditData(),open=!!ui.open[e.id];
-  var vb=[['Y','참석'],['N','불참'],['M','미정']].map(function(v){
+  var vb=[['Y','참석'],['N','불참']].map(function(v){
     return '<button class="vbtn" data-act="vote" data-e="'+esc(e.id)+'" data-s="'+v[0]+'" aria-pressed="'+(mine===v[0])+'"'+(lock?' disabled':'')+'>'+v[1]+'</button>';
   }).join('');
   var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+'">'+
@@ -659,12 +680,12 @@ function evCard(e,t,past){
     '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+(!past&&canWrite?attPanel(e):'')+attLogBlock(e)+
     '<div class="sum"><div class="bar" role="img" aria-label="참석 '+tl.Y.length+', 불참 '+tl.N.length+', 미정 '+tl.M.length+', 미응답 '+no+'">'+
     '<i class="y" style="width:'+pct(tl.Y.length)+'%"></i><i class="n" style="width:'+pct(tl.N.length)+'%"></i><i class="m" style="width:'+pct(tl.M.length)+'%"></i></div>'+
-    '<div class="counts"><span>참석 <b>'+tl.Y.length+'</b></span><span>불참 <b>'+tl.N.length+'</b></span><span>미정 <b>'+tl.M.length+'</b></span><span>미응답 <b>'+no+'</b></span></div></div>';
+    '<div class="counts"><span>참석 <b>'+tl.Y.length+'</b></span><span>불참 <b>'+tl.N.length+'</b></span>'+(tl.M.length?'<span>미정 <b>'+tl.M.length+'</b></span>':'')+'<span>미응답 <b>'+no+'</b></span></div></div>';
   if(open){
     var voted={};tl.Y.concat(tl.N,tl.M).forEach(function(id){voted[id]=1;});
     var rest=activeIds().filter(function(id){return !voted[id];}),away=Object.keys(S.members).filter(function(id){return stOf(id)&&!voted[id];});
     var grp=function(c,l,ids){return '<div><div class="grp-h '+c+'">'+l+' '+ids.length+'</div><div class="pills">'+(ids.length?sortIds(ids).map(function(id){return '<span class="pill">'+esc(nick(id))+stBadge(id)+attBadges(e.id,id)+'</span>';}).join(''):'<span class="none">없음</span>')+'</div></div>';};
-    h+='<div class="names">'+grp('y','참석',tl.Y)+grp('n','불참',tl.N)+grp('m','미정',tl.M)+grp('x','미응답',rest)+(away.length?grp('x','휴식·부상 (투표 안 함)',away):'')+'</div>';
+    h+='<div class="names">'+grp('y','참석',tl.Y)+grp('n','불참',tl.N)+(tl.M.length?grp('m','미정',tl.M):'')+grp('x','미응답',rest)+(away.length?grp('x','휴식·부상 (투표 안 함)',away):'')+'</div>';
   }
   h+='<div class="ev-foot"><button class="btn sm" data-act="expand" data-e="'+esc(e.id)+'" aria-expanded="'+open+'">'+(open?'명단 접기':'명단 보기')+'</button>';
   if(mg&&!past)h+='<button class="btn sm" data-act="sharevote" data-e="'+esc(e.id)+'">미응답 안내 문구</button>';
@@ -1310,21 +1331,35 @@ root.addEventListener('click',async function(ev){
       paintApp();break;
     }
     case 'att':{
-      var aid=d.e+'_'+me,ac=S.attend[aid]||{},inp=null;
-      document.querySelectorAll('input[data-attnote]').forEach(function(i){if(i.dataset.attnote===d.e)inp=i;});
-      var nx={e:d.e,m:me,p:ac.p||'',lt:lateOf(ac)?1:0,nt:inp?inp.value.trim():(ac.nt||''),t:Date.now()};
-      if(d.k==='Y'||d.k==='N')nx.p=(nx.p===d.k)?'':d.k;else if(d.k==='lt')nx.lt=nx.lt?0:1;
-      if(!nx.p&&!nx.lt&&!nx.nt)delete S.attend[aid];else{var sv={e:d.e,m:me,t:nx.t};if(nx.p)sv.p=nx.p;if(nx.lt)sv.lt=1;if(nx.nt)sv.nt=nx.nt.slice(0,40);S.attend[aid]=sv;}
-      if(locked(S.events[d.e]||{date:'0',deadline:'0'})&&(d.k==='Y'||d.k==='N')){
+      var aid=d.e+'_'+me,ac=S.attend[aid]||{},inN=null,inL=null,ev0=S.events[d.e]||{date:'0',deadline:'0'};
+      document.querySelectorAll('input[data-attnote]').forEach(function(i){if(i.dataset.attnote===d.e)inN=i;});
+      document.querySelectorAll('input[data-attln]').forEach(function(i){if(i.dataset.attln===d.e)inL=i;});
+      var v0=(S.votes[aid]||{}).s,vt=(v0==='Y'||v0==='N')?v0:'',cur=lateOf(ac)?'L':(ac.p||''),next=cur;
+      if(d.k==='Y'||d.k==='N'||d.k==='L')next=(cur===d.k)?'':d.k;   /* 세 개 중 하나만, 같은 걸 다시 누르면 해제 */
+      var nx={p:'',lt:0,ln:'',nt:ntOf(ac)};
+      if(next==='Y'||next==='N')nx.p=next;
+      else if(next==='L'){nx.lt=1;nx.p=(vt==='Y')?'':'Y';}
+      /* 지각·조퇴 메모는 지각·조퇴를 계속 고르고 있을 때만 남고, 일반 메모는 상태와 상관없이 남아요 */
+      if(next==='L')nx.ln=(d.k==='ln'&&inL)?inL.value.trim():(cur==='L'?lnOf(ac):'');
+      if(d.k==='ln'&&cur==='L'){nx.p=ac.p||'';nx.lt=1;}
+      if(d.k==='nt'){nx.nt=inN?inN.value.trim():'';if(cur==='L'){nx.lt=1;nx.p=ac.p||'';nx.ln=lnOf(ac);}else nx.p=ac.p||'';}
+      if(!locked(ev0))nx.p='';   /* 마감 전에는 참가·불참을 여기서 바꾸지 않아요 */
+      if(!nx.p&&!nx.lt&&!nx.ln&&!nx.nt)delete S.attend[aid];else{var sv={e:d.e,m:me,t:Date.now()};if(nx.p)sv.p=nx.p;if(nx.lt){sv.lt=1;sv.ln=nx.ln.slice(0,40);}if(nx.nt)sv.nt=nx.nt.slice(0,40);S.attend[aid]=sv;}
+      if(locked(ev0)){
         /* 서버와 같은 규칙으로 변경 기록도 먼저 화면에 반영: 투표한 처음 상태 → 지금 상태 */
-        var lk='l_'+d.e+'_'+me,v0=(S.votes[aid]||{}).s||'',eff=nx.p||v0;
+        var lk='l_'+d.e+'_'+me,eff=nx.p||vt;
         Object.keys(S.attlog).forEach(function(k){var l=S.attlog[k];if(l&&l.e===d.e&&l.m===me)delete S.attlog[k];});
-        if(eff!==v0)S.attlog[lk]={e:d.e,m:me,f:v0,to:eff,t:Date.now()};
+        if(eff!==vt)S.attlog[lk]={e:d.e,m:me,f:vt,to:eff,t:Date.now()};
       }
       paintApp();
-      if(!(await act('attend',{e:d.e,p:nx.p,lt:nx.lt,nt:nx.nt})))await syncNow();
-      else if(d.k==='nt')toast('메모를 저장했어요.');
+      if(!(await act('attend',{e:d.e,p:nx.p,lt:nx.lt,ln:nx.ln,nt:nx.nt})))await syncNow();
+      else if(d.k==='nt'||d.k==='ln')toast('메모를 저장했어요.');
       paintApp();break;
+    }
+    case 'delnote':{
+      var kn='nt:'+d.e+'_'+d.m+'_'+d.w;if(prev!==kn){ui.confirm=kn;paintApp();break;}
+      var ax=S.attend[d.e+'_'+d.m];
+      await optAct(function(){if(!ax)return;var w=d.w;if(w==='ln'&&ax.ln===undefined&&lateOf(ax))w='nt';delete ax[w];if(!ax.p&&!lateOf(ax)&&!ax.ln&&!ax.nt)delete S.attend[d.e+'_'+d.m];},'delAttNote',{e:d.e,m:d.m,which:d.w},'메모를 삭제했어요.');break;
     }
     case 'dellog':{
       var kl='lg:'+d.l;if(prev!==kl){ui.confirm=kl;paintApp();break;}

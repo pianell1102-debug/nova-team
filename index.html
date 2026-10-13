@@ -305,9 +305,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbzFR4dDVL_aTuwbNOxWvYDOnYD8qrH_iq_9JmB6CDj5oNtcHG7XBDHfT74W_lOVkhp_pg/exec';
+var API_URL='https://script.google.com/macros/s/AKfycbydfHRjEUJq7z1S0dLYIDo9E9Y_wwhqyGMEnXznnFDHbDQcL5-TthFhYuyKUoBOkut9wg/exec';
 var POLL_MS=45000;
-var APP_VER='v3.4 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v3.7 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -429,6 +429,14 @@ async function act(a,p){
     if(j&&j.data&&pending===0&&!syncing){applySync(j);render();}
     else await syncNow();
   });
+}
+/* 먼저 화면에 반영하고 서버에는 뒤에서 저장해요. 저장에 실패하면 서버 내용으로 되돌려요. */
+async function optAct(mutate,a,p,msg){
+  mutate();paintApp();
+  var ok=await act(a,p);
+  if(ok&&msg)toast(msg);
+  if(!ok)await syncNow();
+  paintApp();return ok;
 }
 function applySync(j){
   COLS.forEach(function(c){S[c]=j.data[c]||{};});
@@ -1307,6 +1315,12 @@ root.addEventListener('click',async function(ev){
       var nx={e:d.e,m:me,p:ac.p||'',lt:lateOf(ac)?1:0,nt:inp?inp.value.trim():(ac.nt||''),t:Date.now()};
       if(d.k==='Y'||d.k==='N')nx.p=(nx.p===d.k)?'':d.k;else if(d.k==='lt')nx.lt=nx.lt?0:1;
       if(!nx.p&&!nx.lt&&!nx.nt)delete S.attend[aid];else{var sv={e:d.e,m:me,t:nx.t};if(nx.p)sv.p=nx.p;if(nx.lt)sv.lt=1;if(nx.nt)sv.nt=nx.nt.slice(0,40);S.attend[aid]=sv;}
+      if(locked(S.events[d.e]||{date:'0',deadline:'0'})&&(d.k==='Y'||d.k==='N')){
+        /* 서버와 같은 규칙으로 변경 기록도 먼저 화면에 반영: 투표한 처음 상태 → 지금 상태 */
+        var lk='l_'+d.e+'_'+me,v0=(S.votes[aid]||{}).s||'',eff=nx.p||v0;
+        Object.keys(S.attlog).forEach(function(k){var l=S.attlog[k];if(l&&l.e===d.e&&l.m===me)delete S.attlog[k];});
+        if(eff!==v0)S.attlog[lk]={e:d.e,m:me,f:v0,to:eff,t:Date.now()};
+      }
       paintApp();
       if(!(await act('attend',{e:d.e,p:nx.p,lt:nx.lt,nt:nx.nt})))await syncNow();
       else if(d.k==='nt')toast('메모를 저장했어요.');
@@ -1314,8 +1328,7 @@ root.addEventListener('click',async function(ev){
     }
     case 'dellog':{
       var kl='lg:'+d.l;if(prev!==kl){ui.confirm=kl;paintApp();break;}
-      if(await act('delAttLog',{id:d.l}))toast('변경 기록을 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.attlog[d.l];},'delAttLog',{id:d.l},'변경 기록을 삭제했어요.');break;
     }
     case 'attopen':ui.attOpen=ui.attOpen||{};ui.attOpen[d.e]=true;paintApp();break;
     case 'rf':ui[d.k]=d.f;paintApp();break;
@@ -1349,10 +1362,9 @@ root.addEventListener('click',async function(ev){
     case 'rmadd':ui.files.add.splice(+d.i,1);keepDraft();paintForm();break;
     case 'delpost':{
       var k5='bd:'+d.b;if(prev!==k5){ui.confirm=k5;paintApp();break;}
-      if(await act('delBoard',{id:d.b}))toast('글을 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.posts[d.b];},'delBoard',{id:d.b},'글을 삭제했어요.');break;
     }
-    case 'pinpost':{await act('pinBoard',{id:d.b,pinned:!(S.posts[d.b]&&S.posts[d.b].pinned)});paintApp();break;}
+    case 'pinpost':{var np=!(S.posts[d.b]&&S.posts[d.b].pinned);await optAct(function(){if(S.posts[d.b])S.posts[d.b].pinned=np;},'pinBoard',{id:d.b,pinned:np});break;}
     case 'calview':ui.view=d.v;try{localStorage.setItem('nova-view',d.v);}catch(e){}paintApp();break;
     case 'calnav':{var cm=ui.calMonth||todayStr().slice(0,7),cy=+cm.slice(0,4),cmo=+cm.slice(5,7)+(+d.d);var nd2=new Date(cy,cmo-1,1);ui.calMonth=nd2.getFullYear()+'-'+(nd2.getMonth()<9?'0':'')+(nd2.getMonth()+1);ui.calSel='';paintApp();break;}
     case 'caltoday':ui.calMonth=todayStr().slice(0,7);ui.calSel=todayStr();paintApp();break;
@@ -1377,37 +1389,33 @@ root.addEventListener('click',async function(ev){
     case 'editevlinks':ui.form={kind:'evlinks',id:d.e};paintForm();break;
     case 'delresult':{
       var k6='rs:'+d.r;if(prev!==k6){ui.confirm=k6;paintApp();break;}
-      if(await act('delResult',{id:d.r}))toast('결과를 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.results[d.r];},'delResult',{id:d.r},'결과를 삭제했어요.');break;
     }
     case 'cancelform':ui.form=null;paintForm();break;
     case 'sharevote':{var se=S.events[d.e];if(se)await copyShare(shareVoteText(Object.assign({id:d.e},se)));break;}
     case 'sharealert':{var sa=S.alerts[d.a];if(sa)await copyShare(shareAlertText(sa));break;}
     case 'delevent':{
       var k='ev:'+d.e;if(prev!==k){ui.confirm=k;paintApp();break;}
-      if(await act('delEvent',{id:d.e}))toast('일정을 삭제했어요. 취소 알림이 올라갔어요.');
-      paintApp();break;
+      await optAct(function(){delete S.events[d.e];},'delEvent',{id:d.e},'일정을 삭제했어요. 취소 알림이 올라갔어요.');break;
     }
     case 'delnotice':{
       var k2='nt:'+d.n;if(prev!==k2){ui.confirm=k2;paintApp();break;}
-      if(await act('delNotice',{id:d.n}))toast('공지를 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.notices[d.n];},'delNotice',{id:d.n},'공지를 삭제했어요.');break;
     }
     case 'pinnotice':{
-      var n=S.notices[d.n];if(n)await act('saveNotice',{id:d.n,title:n.title,body:n.body,pinned:!n.pinned});
-      paintApp();break;
+      var n=S.notices[d.n];if(n){var npn=!n.pinned;await optAct(function(){n.pinned=npn;},'saveNotice',{id:d.n,title:n.title,body:n.body,pinned:npn});}
+      break;
     }
     case 'delplace':{
       var k4='pl:'+d.p;if(prev!==k4){ui.confirm=k4;paintApp();break;}
-      if(await act('delPlace',{id:d.p}))toast('장소를 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.places[d.p];},'delPlace',{id:d.p},'장소를 삭제했어요.');break;
     }
-    case 'setst':{if(await act('setStatus',{m:d.m,st:d.st}))toast(nick(d.m)+' 님을 '+(d.st==='rest'?'휴식':d.st==='injured'?'부상':'활동')+' 상태로 바꿨어요.');paintApp();break;}
+    case 'setst':{var stm=S.members[d.m];if(stm)await optAct(function(){if(d.st==='active')delete stm.st;else stm.st=d.st;},'setStatus',{m:d.m,st:d.st},nick(d.m)+' 님을 '+(d.st==='rest'?'휴식':d.st==='injured'?'부상':'활동')+' 상태로 바꿨어요.');break;}
     case 'togglemem':ui.memOpen=!ui.memOpen;paintApp();break;
     case 'toggleadmin':case 'togglemaster':{
       var cr=roleOf(d.m),nr=a==='toggleadmin'?(cr==='admin'?'member':'admin'):(cr==='master'?'member':'master');
-      await act('setRole',{m:d.m,role:nr});
-      paintApp();break;
+      var rm=S.members[d.m];if(rm)await optAct(function(){rm.role=nr;},'setRole',{m:d.m,role:nr});
+      break;
     }
     case 'pinform':ui.form={kind:'pin'};paintForm();break;
     case 'seedmembers':{
@@ -1423,8 +1431,7 @@ root.addEventListener('click',async function(ev){
     }
     case 'delmember':{
       var k3='mb:'+d.m;if(prev!==k3){ui.confirm=k3;paintApp();break;}
-      if(await act('delMember',{m:d.m}))toast('멤버를 삭제했어요.');
-      paintApp();break;
+      await optAct(function(){delete S.members[d.m];},'delMember',{m:d.m},'멤버를 삭제했어요.');break;
     }
   }
 });

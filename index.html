@@ -307,9 +307,9 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://script.google.com/macros/s/AKfycbzmN7bl0y_DSACI3vAIJe5fPbRbRpadAI-pig5slcwMrD_OWBjmwnvRdDsjRd4LSfeFTA/exec';
+var API_URL='https://axrnvlpxoqgqhbipgliz.supabase.co/functions/v1/api';
 var POLL_MS=45000;
-var APP_VER='v4.1 · 2026-10-13';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v5.0 · 2026-10-16';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -415,11 +415,19 @@ function getSess(){try{return localStorage.getItem('nova-token')||null;}catch(e)
 function setSess(v){try{if(v)localStorage.setItem('nova-token',v);else localStorage.removeItem('nova-token');}catch(e){}}
 
 /* ---------- 서버 통신 (Google Apps Script) ---------- */
-function configured(){return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(API_URL);}
+function isSupa(){return /^https:\/\/[a-z0-9-]+\.supabase\.co\/functions\/v1\/[\w-]+$/.test(API_URL);}
+function configured(){return isSupa()||/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(API_URL);}
+var lastNetErr='',bootTry=0;
 async function call(a,p){
-  var res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({a:a,t:token},p||{})),redirect:'follow'});
+  var ctl=(typeof AbortController!=='undefined')?new AbortController():null,tm=ctl?setTimeout(function(){ctl.abort();},30000):null,res;
+  try{
+    res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({a:a,t:token},p||{})),redirect:'follow',signal:ctl?ctl.signal:undefined});
+  }catch(e){
+    lastNetErr=(e&&e.name==='AbortError')?'30초 안에 응답이 없었어요':'네트워크 오류 ('+((e&&e.message)||'연결 실패')+')';
+    throw new Error('서버에 연결하지 못했어요.');
+  }finally{if(tm)clearTimeout(tm);}
   var j;
-  try{j=await res.json();}catch(e){throw new Error('서버 응답을 읽지 못했어요.');}
+  try{j=await res.json();}catch(e){lastNetErr='서버가 JSON이 아닌 응답을 줬어요 (HTTP '+res.status+')';throw new Error('서버 응답을 읽지 못했어요.');}
   if(!j.ok){var er=new Error(j.error||'처리하지 못했어요.');er.code=j.code||'error';throw er;}
   return j;
 }
@@ -476,6 +484,7 @@ async function syncNow(){
   }catch(e){
     if(e&&e.code==='auth'){syncing=false;doLogout();return;}
     netErr=true;
+    if(!loaded&&bootTry<2){bootTry++;netErr=false;syncing=false;setTimeout(syncNow,2500);return;}
   }
   syncing=false;
   renderSoft();
@@ -580,7 +589,7 @@ function render(){
   if(!token||!loaded){
     if(token){
       root.dataset.screen='wait';
-      root.innerHTML=netErr?'<div class="wrap"><div class="card empty" style="margin-top:48px"><b>서버에 연결하지 못했어요</b>잠시 후 다시 시도해 주세요.<div style="margin-top:12px"><button class="btn pri" data-act="retry">다시 시도</button></div></div></div>':'<p class="loading">불러오는 중…</p>';
+      root.innerHTML=netErr?'<div class="wrap"><div class="card empty" style="margin-top:48px"><b>서버에 연결하지 못했어요</b>잠시 후 다시 시도해 주세요.'+(lastNetErr?'<p class="hintline" style="margin-top:8px">원인: '+esc(lastNetErr)+'</p>':'')+'<div style="margin-top:12px"><button class="btn pri" data-act="retry">다시 시도</button></div></div></div>':'<p class="loading">불러오는 중…</p>';
       return;
     }
     if(root.dataset.screen!=='auth')renderAuth();else updateStatus();
@@ -868,7 +877,7 @@ function teamHTML(){
     out+='</div>';
   });
   if(memOpen)out+='</div>';
-  if(isMaster())out+='<div class="card" style="margin-top:12px"><h3 class="nt-title">팀원 일괄 등록</h3><p class="hintline">팀 명단(활동·휴식 멤버)에서 아직 없는 사람을 비밀번호 <b>1234</b>로 한 번에 등록해요. 이미 있는 사람은 그대로 둬요. 몇 번 눌러도 중복되지 않아요. 구글시트의 <b>회원등록</b> 탭 A열에 이름을 적어 두면 5분 안에 자동 등록되고, 이 버튼으로 바로 처리할 수도 있어요.</p><div class="ev-foot"><button class="btn sm'+(ui.confirm==="seed"?' danger armed':'')+'" data-act="seedmembers">'+(ui.confirm==="seed"?'한 번 더 눌러 등록':'명단 일괄 등록')+'</button></div></div>';
+  if(isMaster())out+='<div class="card" style="margin-top:12px"><h3 class="nt-title">팀원 일괄 등록</h3><p class="hintline">팀 명단(활동·휴식 멤버)에서 아직 없는 사람을 비밀번호 <b>1234</b>로 한 번에 등록해요. 이미 있는 사람은 그대로 둬요. 몇 번 눌러도 중복되지 않아요.'+(isSupa()?'':' 구글시트의 <b>회원등록</b> 탭 A열에 이름을 적어 두면 5분 안에 자동 등록되고, 이 버튼으로 바로 처리할 수도 있어요.')+'</p><div class="ev-foot"><button class="btn sm'+(ui.confirm==="seed"?' danger armed':'')+'" data-act="seedmembers">'+(ui.confirm==="seed"?'한 번 더 눌러 등록':'명단 일괄 등록')+'</button></div></div>';
   out+='<p class="hint">일정·공지·장소는 마스터와 관리자가 관리해요. 관리자는 마스터가 지정하고, 마스터는 페이지 소유자가 지정해요.</p>';
   return out;
 }
@@ -978,8 +987,9 @@ async function savePlace(){
 /* ===== 전술 자료실 ===== */
 function canPostBoard(){return canWrite&&(boardWrite==='all'||canManage());}
 function canEditPost(p){return canManage()||(canPostBoard()&&p.by===me);}
-function driveView(id){return 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';}
-function driveThumb(id,w){return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(w||900);}
+/* 첨부 파일 주소: Supabase 서버는 자기 주소에서 파일을 내려줘요(?f=번호). 예전 Google Drive 서버였다면 Drive 주소 */
+function driveView(id){return isSupa()?API_URL+'?f='+encodeURIComponent(id):'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';}
+function driveThumb(id,w){return isSupa()?API_URL+'?f='+encodeURIComponent(id):'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(w||900);}
 function postList(){
   return Object.keys(S.posts).map(function(id){return Object.assign({id:id},S.posts[id]);}).sort(function(a,b){
     return (b.pinned?1:0)-(a.pinned?1:0)||(b.at||0)-(a.at||0);});
@@ -1019,7 +1029,7 @@ function boardFormHTML(){
       (rows.length?'<div class="flist">'+rows.join('')+'</div>':'')+'</div>'+
     '<label class="field">링크 (선택, 한 줄에 하나: 이름 | 주소)<textarea class="inp" id="fb-links" placeholder="예) 세트피스 영상 | https://youtu.be/...">'+esc(links)+'</textarea></label>'+
     (canManage()?'<label class="chk"><input type="checkbox" id="fb-pin"'+(pin?' checked':'')+'>상단에 고정</label>':'')+
-    '<p class="hintline">첨부 파일은 팀 대표 구글 드라이브에 저장되고, 링크를 아는 사람은 볼 수 있어요. 개인정보가 담긴 자료는 올리지 마세요.</p>'+
+    '<p class="hintline">첨부 파일은 '+(isSupa()?'팀 서버':'팀 대표 구글 드라이브')+'에 저장되고, 주소를 아는 사람은 볼 수 있어요. 개인정보가 담긴 자료는 올리지 마세요.</p>'+
     '<p id="formErr" class="err" role="alert"></p><div class="form-actions"><button type="button" class="btn" data-act="cancelform">취소</button><button type="submit" class="btn pri" id="fb-save">저장</button></div></form></div>';
 }
 function keepDraft(){

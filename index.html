@@ -330,9 +330,12 @@ var root=document.getElementById('root');
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var WD=['일','월','화','수','목','금','토'];
 /* ===== 설정: Apps Script 배포 후 받은 웹 앱 주소를 아래 따옴표 안에 붙여넣으세요 ===== */
-var API_URL='https://axrnvlpxoqgqhbipgliz.supabase.co/functions/v1/api';
+var API_URL='https://axrnvlpxoqgqhbipgliz.supabase.co/functions/v1/api2';
+/* DB가 있는 지역(ap-south-1, 뭄바이). 쓰기·로그인처럼 DB를 여러 번 오가는 요청은 DB 옆에서 실행하면 훨씬 빨라요.
+   DB를 한 번만 오가는 sync(조회)는 가까운 서울에서 실행하는 게 더 빨라서 지정하지 않아요(실측: 서울 0.19초 vs 뭄바이 0.38초). 비우면 모두 가까운 곳에서 실행돼요. 서버 ?diag=1 로 지역을 찾을 수 있어요. */
+var API_REGION='ap-south-1';
 /* 점검 중이면 true: 서버에 아무 요청도 보내지 않고 안내 화면만 보여줘요. 주소 뒤에 ?preview 를 붙이면 운영진이 점검 중에도 열어 볼 수 있어요. */
-var MAINTENANCE=true,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
+var MAINTENANCE=false,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
 var POLL_MS=45000;
 var APP_VER='v5.2 · 2026-10-16';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
@@ -388,17 +391,23 @@ function attOf(eid,id){return S.attend[eid+'_'+id]||null;}
 function attBadges(eid,id){var x=attOf(eid,id);if(!x)return '';return (lateOf(x)?'<span class="st late">지각·조퇴</span>':'');}
 function attPanel(e){
   var x=attOf(e.id,me)||{},eid=esc(e.id),v0=(S.votes[e.id+'_'+me]||{}).s,vote=(v0==='Y'||v0==='N')?v0:'',closed=locked(e);
-  if(!closed&&vote!=='Y')return '';   /* 마감 전에는 참석으로 투표한 사람만 지각·조퇴를 알릴 수 있어요 */
-  var sel=lateOf(x)?'L':(x.p||'');     /* 지금 고른 것: 참가(Y) / 불참(N) / 지각·조퇴(L) 중 하나 */
-  var need=closed&&!vote&&!sel;
-  var head=need?'투표가 마감됐어요. 투표를 하지 않았어요. 투표하기를 눌러 하나를 골라 주세요.':(closed?'투표가 마감됐어요. 바뀐 게 있으면 투표하기를 눌러 주세요.':'참석이어도 늦게 오거나 일찍 가야 하면 미리 알려 주세요. 모두에게 보여요.');
+  var sel=lateOf(x)?'L':(x.p||'');     /* 마감 후 고른 것: 참가(Y) / 불참(N) / 지각·조퇴(L) 중 하나 */
+  var need=closed?(!vote&&!sel):!vote;
+  var head=closed?(need?'투표가 마감됐어요. 투표를 하지 않았어요. 투표하기를 눌러 하나를 골라 주세요.':'투표가 마감됐어요. 바뀐 게 있으면 투표하기를 눌러 주세요.')
+    :(need?'아직 투표하지 않았어요. 투표하기를 눌러 참석 여부를 알려 주세요.':'투표했어요. 바꾸거나 늦게 오면 투표하기를 눌러 주세요.');
   /* 상태는 위 칸에 보이니 여기에는 지각·조퇴 메모만 보여줘요 */
-  return '<div class="att"><p class="att-h">'+head+'</p>'+(sel==='L'&&lnOf(x)?'<p class="att-mine">지각·조퇴 메모: '+esc(lnOf(x))+'</p>':'')+
-    '<button class="btn'+(need?' pri':'')+'" data-act="attm" data-e="'+eid+'">'+(closed?'투표하기':'지각·조퇴 알리기')+'</button></div>';
+  return '<div class="att"><p class="att-h">'+head+'</p>'+(lateOf(x)&&lnOf(x)?'<p class="att-mine">지각·조퇴 메모: '+esc(lnOf(x))+'</p>':'')+
+    '<button class="btn'+(need?' pri':'')+'" data-act="attm" data-e="'+eid+'">투표하기</button></div>';
 }
 /* 출석 표시 팝업: 고르고 메모를 쓴 뒤 저장을 눌러야 서버에 반영돼요 */
 var ATK={Y:'참가',N:'불참',L:'지각·조퇴'};
-function attOpts(e){var v0=(S.votes[e.id+'_'+me]||{}).s,o=[];if(locked(e)){if(v0!=='Y')o.push(['Y','참가','ay']);if(v0!=='N')o.push(['N','불참','an']);}o.push(['L','지각·조퇴','ax']);return o;}
+function attOpts(e){
+  var v0=(S.votes[e.id+'_'+me]||{}).s,o=[];
+  if(!locked(e))o.push(['Y','참석','ay'],['N','불참','an']);   /* 마감 전: 투표 자체를 고르는 팝업이에요 */
+  else{if(v0!=='Y')o.push(['Y','참가','ay']);if(v0!=='N')o.push(['N','불참','an']);}   /* 마감 후: 투표한 것과 같은 건 보여주지 않아요 */
+  o.push(['L','지각·조퇴','ax']);return o;
+}
+var ATP={Y:'참석',N:'불참',L:'지각·조퇴'};
 function attModalHTML(){
   var m=ui.attM,e=m&&S.events[m.e];if(!e)return '';
   var opts=attOpts(e),dis=m.saving?' disabled':'',v0=(S.votes[e.id+'_'+me]||{}).s;
@@ -500,7 +509,7 @@ var lastNetErr='',bootTry=0;
 async function call(a,p){
   var ctl=(typeof AbortController!=='undefined')?new AbortController():null,tm=ctl?setTimeout(function(){ctl.abort();},30000):null,res;
   try{
-    res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({a:a,t:token},p||{})),redirect:'follow',signal:ctl?ctl.signal:undefined});
+    res=await fetch((API_REGION&&a!=='sync')?API_URL+'?forceFunctionRegion='+encodeURIComponent(API_REGION):API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({a:a,t:token},p||{})),redirect:'follow',signal:ctl?ctl.signal:undefined});
   }catch(e){
     lastNetErr=(e&&e.name==='AbortError')?'30초 안에 응답이 없었어요':'네트워크 오류 ('+((e&&e.message)||'연결 실패')+')';
     throw new Error('서버에 연결하지 못했어요.');
@@ -801,13 +810,9 @@ function evCard(e,t,past){
   if(e.memo)sub.push(e.memo);
   var pct=function(c){return total?(c/total*100):0;};
   var mg=canEditData(),open=!!ui.open[e.id];
-  var vb=[['Y','참석'],['N','불참']].map(function(v){
-    return '<button class="vbtn" data-act="vote" data-e="'+esc(e.id)+'" data-s="'+v[0]+'" aria-pressed="'+(mine===v[0])+'"'+(lock?' disabled':'')+'>'+v[1]+'</button>';
-  }).join('');
-  if(lock){   /* 투표할 수 없을 때는 버튼 대신 내 상태만 보여줘요. 마감 후 출석 표시가 있으면 그게 우선이에요. */
-    var ax=attOf(e.id,me)||{},es=ax.p||(lateOf(ax)?'Y':'')||mine||'';
-    vb='<div class="vstate s-'+(es||'x')+'">'+(ATL[es]||'미투표')+(lateOf(ax)?' · 지각·조퇴':'')+'</div>';
-  }
+  /* 참석·불참은 버튼이 아니라 내 상태만 보여주고, 바꾸는 건 아래 "투표하기" 팝업에서 해요. 마감 후 출석 표시가 있으면 그게 우선이에요. */
+  var ax=attOf(e.id,me)||{},es=ax.p||(lateOf(ax)?'Y':'')||mine||'';
+  var vb='<div class="vstate s-'+(es||'x')+'">'+(ATL[es]||'미투표')+(lateOf(ax)?' · 지각·조퇴':'')+'</div>';
   var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+'">'+
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
     '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&needsAttend(e)?'<span class="need">출석 표시 필요</span>':'')+(!past&&!mine&&!lock&&!stOf(me)?'<span class="need">투표 필요</span>':'')+'</div>'+
@@ -1469,7 +1474,8 @@ root.addEventListener('click',async function(ev){
     case 'attm':{
       var ae=S.events[d.e];if(!ae)break;
       var ax0=S.attend[d.e+'_'+me]||{};
-      ui.attM={e:d.e,k:lateOf(ax0)?'L':(ax0.p||''),ln:lnOf(ax0),ask:'',saving:false};
+      var vo=(S.votes[d.e+'_'+me]||{}).s,vo2=(vo==='Y'||vo==='N')?vo:'';
+      ui.attM={e:d.e,k:lateOf(ax0)?'L':(locked(ae)?(ax0.p||''):vo2),ln:lnOf(ax0),ask:'',saving:false};   /* 마감 전에는 지금 투표를 미리 골라 둬요 */
       paintModal();break;
     }
     case 'attmpick':if(!ui.attM)break;readModal();ui.attM.k=(ui.attM.k===d.k)?'':d.k;paintModal();break;   /* 세 개 중 하나만, 같은 걸 다시 누르면 해제 */
@@ -1480,10 +1486,23 @@ root.addEventListener('click',async function(ev){
       if(!m.ask)readModal();
       var aid=m.e+'_'+me,ac=S.attend[aid]||{},ev0=S.events[m.e]||{date:'0',deadline:'0'};
       var v0=(S.votes[aid]||{}).s,vt=(v0==='Y'||v0==='N')?v0:'',cur=lateOf(ac)?'L':(ac.p||'');
+      if(!locked(ev0)){   /* 마감 전: 투표(vote)와 지각·조퇴(attend)를 차례로 저장해요 */
+        var curP=lateOf(ac)?'L':vt,nextP=m.k,lnv=nextP==='L'?m.ln.trim().slice(0,40):'';
+        if(nextP===curP&&(nextP!=='L'||lnv===lnOf(ac))){ui.attM=null;paintModal();toast('바뀐 내용이 없어요.');break;}
+        if(!d.ok&&(curP||lnOf(ac))){
+          m.ask=nextP===curP?'메모를 바꿔요.':(curP?ATP[curP]:'미투표')+' → '+(nextP?ATP[nextP]:'투표 취소');
+          paintModal();break;
+        }
+        m.saving=true;paintModal();
+        var wantV=nextP==='L'?'Y':(nextP||null),okp=true;
+        if(wantV!==(vt||null))okp=await act('vote',{e:m.e,s:wantV});
+        if(okp&&(nextP==='L'||lateOf(ac)||lnOf(ac)))okp=await act('attend',{e:m.e,p:'',lt:nextP==='L'?1:0,ln:lnv,nt:''});
+        if(okp){ui.attM=null;toast('저장했어요.');}else m.saving=false;
+        paintModal();paintApp();break;
+      }
       var nx={p:'',lt:0,ln:'',nt:''};
       if(m.k==='Y'||m.k==='N')nx.p=m.k;
       else if(m.k==='L'){nx.lt=1;nx.p=(vt==='Y')?'':'Y';nx.ln=m.ln.trim().slice(0,40);}   /* 지각·조퇴 메모는 지각·조퇴를 고를 때만 남아요 */
-      if(!locked(ev0))nx.p='';   /* 마감 전에는 참가·불참을 여기서 바꾸지 않아요 */
       if(m.k===cur&&nx.ln===lnOf(ac)){ui.attM=null;paintModal();toast('바뀐 내용이 없어요.');break;}
       /* 이미 표시한 상태(또는 투표)가 있으면 한 번 더 물어봐요 */
       var was=cur?ATK[cur]:(vt?({Y:'참석',N:'불참'}[vt])+' 투표':'');

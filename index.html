@@ -169,6 +169,7 @@ body.m-open{overflow:hidden}
 .ck-by{margin-left:6px;color:var(--muted);font-size:12px}
 .vbtn.ae[aria-pressed=true]{background:var(--sunk);border-color:var(--ink);color:var(--ink)}
 .m-err{font-size:13px;color:var(--no)}
+.attlog .lg-late{color:var(--maybe);margin-left:1px}
 .attlog .to-Y{color:var(--yes)}.attlog .to-N{color:var(--no)}
 .att-nt input{flex:1 1 0;width:0;min-width:0;border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;font-size:16px}
 .stsel .btn[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -419,7 +420,7 @@ function attModalHTML(){
     return h;
   }
   h+='<div class="votes att'+opts.length+'">'+opts.map(function(o){return '<button class="vbtn '+o[2]+'" data-act="attmpick" data-k="'+o[0]+'" aria-pressed="'+(m.k===o[0])+'"'+dis+'>'+o[1]+'</button>';}).join('')+'</div>'+
-    (m.k==='L'?'<label class="m-l">지각·조퇴 메모<input type="text" maxlength="40" id="attm-ln" value="'+esc(m.ln)+'" placeholder="예: 20분 늦어요"'+dis+'></label>':'')+
+    (m.k==='L'?'<label class="m-l">지각·조퇴 메모<input type="text" maxlength="40" id="attm-ln" value="'+esc(m.ln)+'" placeholder="예: 10분 지각"'+dis+'></label>':'')+
     '<div class="m-foot"><button class="btn" data-act="attmclose"'+dis+'>취소</button><button class="btn pri" data-act="attmsave"'+dis+'>'+(m.saving?'<span class="spin" aria-hidden="true"></span>저장 중':'저장')+'</button></div></div>';
   return h;
 }
@@ -478,7 +479,7 @@ function attLogBlock(e){
     var byM={},ord=[];
     logs.slice().reverse().forEach(function(l){if(!byM[l.m]){byM[l.m]=[];ord.push(l.m);}byM[l.m].push(l);});
     h+='<div class="grp-h">마감 후 변경 '+logs.length+'</div><ul>'+ord.map(function(m){
-      return '<li class="lg-m"><b>'+esc(nick(m))+'</b><ol>'+byM[m].map(function(l){return '<li>'+ATL[l.f||'']+' → <b class="to-'+(l.to||'x')+'">'+ATL[l.to||'']+'</b><time>'+hm(l.t)+'</time>'+(canManage()?'<button class="btn sm danger lgdel" data-act="dellog" data-l="'+esc(l.id)+'">'+(ui.confirm==='lg:'+l.id?'정말 삭제':'삭제')+'</button>':'')+'</li>';}).join('')+'</ol></li>';
+      return '<li class="lg-m"><b>'+esc(nick(m))+'</b><ol>'+byM[m].map(function(l,i){return '<li>'+ATL[l.f||'']+' → <b class="to-'+(l.to||'x')+'">'+ATL[l.to||'']+'</b>'+(i===0&&l.to==='Y'&&lateOf(S.attend[e.id+'_'+m])?'<b class="lg-late">(지각·조퇴)</b>':'')+'<time>'+hm(l.t)+'</time>'+(canManage()?'<button class="btn sm danger lgdel" data-act="dellog" data-l="'+esc(l.id)+'">'+(ui.confirm==='lg:'+l.id?'정말 삭제':'삭제')+'</button>':'')+'</li>';}).join('')+'</ol></li>';
     }).join('')+'</ul>';
   }
   if(notes.length){

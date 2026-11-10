@@ -71,7 +71,7 @@ a{color:inherit}
 .ev.is-cx{opacity:.6;background:#f1f1f1}.ev.is-cx .ev-title{text-decoration:line-through;color:var(--muted)}
 .cc.done{opacity:.5}.cc.cx{border-style:dashed;background:#d4d4d4;border-color:#d4d4d4;color:#777;text-decoration:line-through}
 .ev-date{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;padding:8px 0;line-height:1.15;align-self:start}
-.t-train{--tc:#16794A;--tb:#E6F4EC}.t-match{--tc:#C2189C;--tb:#FCEAF8}.t-cup{--tc:#B45309;--tb:#FEF0DC}.t-meet{--tc:#1D4ED8;--tb:#E6EDFF}
+.t-train{--tc:#1A1A1A;--tb:#1A1A1A;--tt:#fff}.t-match{--tc:#1A1A1A;--tb:#fff;--tt:#1A1A1A}.t-cup{--tc:#C2189C;--tb:#C2189C;--tt:#fff}.t-meet{--tc:#C2189C;--tb:#fff;--tt:#C2189C}
 .ev{border-left:5px solid var(--tc,var(--line))}
 .ev .ev-date{border-color:var(--tc);color:var(--tc)}
 .ev .tag.ty{color:var(--tc);border-color:var(--tc);background:var(--tb)}
@@ -329,6 +329,15 @@ button,a,.chip,.tab,.vbtn,.btn{touch-action:manipulation}
 .hm-pg{margin-top:12px}.hm-bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}.hm-bar i{display:block;height:100%;background:var(--pink);border-radius:99px}.hm-bar.full i{background:var(--ink)}
 .hm-l{display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px;color:var(--muted)}.hm-l b{color:var(--ink)}
 .hm-dl{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
+
+/* v6.4 종류 구분: 훈련=검정 채움, 매치=검정 테두리, 대회=핑크 채움, 모임=핑크 테두리 */
+.ev .tag.ty,.rg .tag.ty,.tag.ty-pend{background:var(--tb,var(--sunk));color:var(--tt,var(--tc,var(--ink)));border-color:var(--tc,var(--line))}
+.chip .dot.t-match,.chip .dot.t-meet{background:#fff;box-shadow:inset 0 0 0 2px var(--tc)}
+.cc.t-train,.cc.t-cup{background:var(--tc);color:#fff;border-color:var(--tc)}
+.cc.t-match,.cc.t-meet{background:#fff;color:var(--tc);border-color:var(--tc)}
+.cc.late,.cc.miss{border-color:var(--tc)}
+.cc.need::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#C2189C;box-shadow:0 0 0 1.5px #fff;margin-right:3px;vertical-align:middle}
+.cc.cc.cx{background:#e5e5e5;border:1px dashed #aaa;color:#777}
 </style>
 </head>
 <body>
@@ -349,7 +358,7 @@ var API_REGION='ap-south-1';
 /* 점검 중이면 true: 서버에 아무 요청도 보내지 않고 안내 화면만 보여줘요. 주소 뒤에 ?preview 를 붙이면 운영진이 점검 중에도 열어 볼 수 있어요. */
 var MAINTENANCE=false,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
 var POLL_MS=45000;
-var APP_VER='v6.3 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v6.4 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog','checks'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -1416,7 +1425,7 @@ function calendarPage(){
   if(!sel){var td=todayStr();sel=monthKey(td)===mk?td:(evs[0]?evs[0].date:'');}
   var first=new Date(y,mo-1,1).getDay(),nd=new Date(y,mo,0).getDate(),td2=todayStr();
   out+='<div class="cal-h"><button class="btn sm" data-act="calnav" data-d="-1" aria-label="이전 달">‹</button><b>'+y+'년 '+mo+'월</b><button class="btn sm" data-act="calnav" data-d="1" aria-label="다음 달">›</button></div>'+
-    '<div class="cal-sub"><button class="linkbtn" data-act="caltoday">오늘로 이동</button><span class="hintline">색 채움은 투표 완료, 테두리만 있으면 투표 필요, 흐리면 완료된 일정, 점선 취소선은 취소된 일정</span></div>';
+    '<div class="cal-sub"><button class="linkbtn" data-act="caltoday">오늘로 이동</button><span class="hintline">검정·핑크 채움은 훈련·대회, 테두리는 매치·모임. 핑크 점은 투표나 출석 표시가 필요한 일정, 흐리면 완료, 점선 취소선은 취소</span></div>';
   out+='<div class="cal" role="grid">'+WD.map(function(w,i){return '<div class="cwd'+(i===0?' sun':'')+'">'+w+'</div>';}).join('');
   for(var i=0;i<first;i++)out+='<div class="cell blank"></div>';
   for(var dnum=1;dnum<=nd;dnum++){

@@ -69,7 +69,7 @@ a{color:inherit}
 .ev{display:grid;grid-template-columns:60px minmax(0,1fr);gap:12px 14px}
 .ev.is-past{opacity:.8}
 .ev.is-cx{opacity:.6;background:#f1f1f1}.ev.is-cx .ev-title{text-decoration:line-through;color:var(--muted)}
-.cc.cx{background:#d4d4d4;border-color:#d4d4d4;color:#777;text-decoration:line-through}
+.cc.done{opacity:.5}.cc.cx{border-style:dashed;background:#d4d4d4;border-color:#d4d4d4;color:#777;text-decoration:line-through}
 .ev-date{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;padding:8px 0;line-height:1.15;align-self:start}
 .t-train{--tc:#16794A;--tb:#E6F4EC}.t-match{--tc:#C2189C;--tb:#FCEAF8}.t-cup{--tc:#B45309;--tb:#FEF0DC}.t-meet{--tc:#1D4ED8;--tb:#E6EDFF}
 .ev{border-left:5px solid var(--tc,var(--line))}
@@ -349,7 +349,7 @@ var API_REGION='ap-south-1';
 /* 점검 중이면 true: 서버에 아무 요청도 보내지 않고 안내 화면만 보여줘요. 주소 뒤에 ?preview 를 붙이면 운영진이 점검 중에도 열어 볼 수 있어요. */
 var MAINTENANCE=false,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
 var POLL_MS=45000;
-var APP_VER='v6.2 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v6.3 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog','checks'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -1416,15 +1416,15 @@ function calendarPage(){
   if(!sel){var td=todayStr();sel=monthKey(td)===mk?td:(evs[0]?evs[0].date:'');}
   var first=new Date(y,mo-1,1).getDay(),nd=new Date(y,mo,0).getDate(),td2=todayStr();
   out+='<div class="cal-h"><button class="btn sm" data-act="calnav" data-d="-1" aria-label="이전 달">‹</button><b>'+y+'년 '+mo+'월</b><button class="btn sm" data-act="calnav" data-d="1" aria-label="다음 달">›</button></div>'+
-    '<div class="cal-sub"><button class="linkbtn" data-act="caltoday">오늘로 이동</button><span class="hintline">테두리만 있으면 투표 필요, 빨간 테두리는 마감 후 출석 표시 필요, 회색 테두리는 투표 안 하고 지난 일정</span></div>';
+    '<div class="cal-sub"><button class="linkbtn" data-act="caltoday">오늘로 이동</button><span class="hintline">색 채움은 투표 완료, 테두리만 있으면 투표 필요, 흐리면 완료된 일정, 점선 취소선은 취소된 일정</span></div>';
   out+='<div class="cal" role="grid">'+WD.map(function(w,i){return '<div class="cwd'+(i===0?' sun':'')+'">'+w+'</div>';}).join('');
   for(var i=0;i<first;i++)out+='<div class="cell blank"></div>';
   for(var dnum=1;dnum<=nd;dnum++){
     var ds=mk+'-'+(dnum<10?'0':'')+dnum,list=by[ds]||[],wd=(first+dnum-1)%7;
     var chips=list.slice(0,2).map(function(e){
-      var rs=resultsOf(e.id),label=(rs.length===1)?rs[0].us+':'+rs[0].them:e.type;
+      var rs=resultsOf(e.id),pastE=e.date<todayStr(),st=e.cx?'취소':pastE?'완료':'예정',label=e.type+' '+((!e.cx&&pastE&&rs.length===1)?rs[0].us+':'+rs[0].them:st);
       var late=needsAttend(e),miss=missedVote(e),need=late||miss||needsVote(e);   /* 취소된 일정은 모두 false */
-      return '<i class="cc '+tcls(e.type)+(need?' need':'')+(late?' late':'')+(miss?' miss':'')+(e.cx?' cx':'')+'">'+esc(label)+'</i>';}).join('')+(list.length>2?'<i class="more">+'+(list.length-2)+'</i>':'');
+      return '<i class="cc '+tcls(e.type)+(need?' need':'')+(late?' late':'')+(miss?' miss':'')+(e.cx?' cx':(pastE?' done':''))+'" title="'+esc(label)+'">'+esc(label)+'</i>';}).join('')+(list.length>2?'<i class="more">+'+(list.length-2)+'</i>':'');
     out+='<button class="cell'+(ds===td2?' today':'')+(ds===sel?' sel':'')+(wd===0?' sun':'')+'" data-act="calsel" data-d="'+ds+'" aria-label="'+mo+'월 '+dnum+'일 일정 '+list.length+'개"><span class="cn">'+dnum+'</span>'+chips+'</button>';
   }
   out+='</div>';

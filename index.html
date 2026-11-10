@@ -68,6 +68,8 @@ a{color:inherit}
 /* 일정 카드 */
 .ev{display:grid;grid-template-columns:60px minmax(0,1fr);gap:12px 14px}
 .ev.is-past{opacity:.8}
+.ev.is-cx{opacity:.6;background:#f1f1f1}.ev.is-cx .ev-title{text-decoration:line-through;color:var(--muted)}
+.cc.cx{background:#d4d4d4;border-color:#d4d4d4;color:#777;text-decoration:line-through}
 .ev-date{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;padding:8px 0;line-height:1.15;align-self:start}
 .t-train{--tc:#16794A;--tb:#E6F4EC}.t-match{--tc:#C2189C;--tb:#FCEAF8}.t-cup{--tc:#B45309;--tb:#FEF0DC}.t-meet{--tc:#1D4ED8;--tb:#E6EDFF}
 .ev{border-left:5px solid var(--tc,var(--line))}
@@ -338,7 +340,7 @@ var API_REGION='ap-south-1';
 /* 점검 중이면 true: 서버에 아무 요청도 보내지 않고 안내 화면만 보여줘요. 주소 뒤에 ?preview 를 붙이면 운영진이 점검 중에도 열어 볼 수 있어요. */
 var MAINTENANCE=false,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
 var POLL_MS=45000;
-var APP_VER='v5.2 · 2026-10-16';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v6.1 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog','checks'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -561,7 +563,7 @@ function applySync(j){
   boardWrite=(j.cfg&&j.cfg.boardWrite)||'manager';
   checksOn=!!(j.cfg&&j.cfg.checks);   /* 서버가 일정 후 체크를 지원할 때만 버튼을 보여줘요 */
   serverVer=(j.cfg&&j.cfg.ver)||'';
-  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings&&j.cfg.status&&j.cfg.attend&&j.cfg.attlog&&j.cfg.attnote);
+  oldServer=!(j.cfg&&j.cfg.types&&j.cfg.types.length>=4&&j.cfg.results&&j.cfg.periods&&j.cfg.settings&&j.cfg.status&&j.cfg.attend&&j.cfg.attlog&&j.cfg.attnote&&j.cfg.cancel);
   me=j.me.id;myRole=j.me.role;amOwner=!!j.me.owner;myInit=!!j.me.init;loaded=true;netErr=false;
 }
 async function syncNow(){
@@ -622,9 +624,9 @@ async function doAuth(){
 
 /* ---------- 계산 ---------- */
 function locked(e){return todayStr()>dlEff(e);}
-function needsVote(e){return !stOf(me)&&e.date>=todayStr()&&!S.votes[e.id+'_'+me]&&!locked(e)&&canWrite;}
+function needsVote(e){return !e.cx&&!stOf(me)&&e.date>=todayStr()&&!S.votes[e.id+'_'+me]&&!locked(e)&&canWrite;}
 /* 투표가 마감됐는데 참가·불참을 정하지 않았으면 출석 표시가 필요해요 */
-function unvotedClosed(e){var v=(S.votes[e.id+'_'+me]||{}).s;return !stOf(me)&&locked(e)&&canWrite&&!((S.attend[e.id+'_'+me]||{}).p)&&v!=='Y'&&v!=='N';}
+function unvotedClosed(e){if(e.cx)return false;var v=(S.votes[e.id+'_'+me]||{}).s;return !stOf(me)&&locked(e)&&canWrite&&!((S.attend[e.id+'_'+me]||{}).p)&&v!=='Y'&&v!=='N';}
 function needsAttend(e){return !started(e)&&unvotedClosed(e);}
 /* 일정이 시작됐는데 끝까지 참가·불참을 정하지 않았어요 */
 function missedVote(e){return started(e)&&unvotedClosed(e);}
@@ -661,6 +663,7 @@ function reminders(all){
   var up=eventList().filter(function(e){return e.date>=todayStr();}).sort(function(a,b){return evKey(a)<evKey(b)?-1:1;});
   var vote=[],eve=[],dis=disSet();
   up.forEach(function(e){
+    if(e.cx)return;
     var mine=((S.attend[e.id+'_'+me]||{}).p)||(S.votes[e.id+'_'+me]||{}).s,n=dayDiff(dlEff(e)),d=dayDiff(e.date);
     if(!mine&&!stOf(me)&&n>=0&&n<=cfgS().remindDays&&canWrite){var kv='v'+e.id;if(all||!dis[kv])vote.push({e:e,n:n,k:kv,dis:!!dis[kv]});}
     if(d<=cfgS().eveDays&&mine!=='N'&&!(stOf(me)&&mine!=='Y')){var ke='e'+e.id+'_'+d;if(all||!dis[ke])eve.push({e:e,d:d,k:ke,dis:!!dis[ke]});}
@@ -804,8 +807,8 @@ function evCard(e,t,past){
   var d=parseD(e.date),diff=dayDiff(e.date),tl=t[e.id]||{Y:[],N:[],M:[]};
   var vset={};tl.Y.concat(tl.N,tl.M).forEach(function(id){vset[id]=1;});var actIds=activeIds(),total=actIds.length+Object.keys(vset).filter(function(id){return stOf(id);}).length,done=tl.Y.length+tl.N.length+tl.M.length,no=actIds.filter(function(id){return !vset[id];}).length;
   var mine=(S.votes[e.id+'_'+me]||{}).s;
-  var lock=past||!canWrite||locked(e);
-  var dd=past?'':(diff===0?'오늘':diff===1?'내일':'D-'+diff);
+  var cx=!!e.cx,lock=past||cx||!canWrite||locked(e);
+  var dd=(past||cx)?'':(diff===0?'오늘':diff===1?'내일':'D-'+diff);
   var meta=esc([e.time,placeFull(e)].filter(Boolean).join(' · '))+mapLink(e.map);
   var sub=['투표 마감 '+fmtMD(dlEff(e))+(todayStr()>dlEff(e)?' · 마감됨':'')];
   if(e.memo)sub.push(e.memo);
@@ -814,11 +817,11 @@ function evCard(e,t,past){
   /* 참석·불참은 버튼이 아니라 내 상태만 보여주고, 바꾸는 건 아래 "투표하기" 팝업에서 해요. 마감 후 출석 표시가 있으면 그게 우선이에요. */
   var ax=attOf(e.id,me)||{},es=ax.p||(lateOf(ax)?'Y':'')||mine||'';
   var vb='<div class="vstate s-'+(es||'x')+'">'+(ATL[es]||'미투표')+(lateOf(ax)?' · 지각·조퇴':'')+'</div>';
-  var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+'">'+
+  var h='<article class="card ev '+tcls(e.type)+(past?' is-past':'')+(cx?' is-cx':'')+'">'+
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
-    '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&needsAttend(e)?'<span class="need">출석 표시 필요</span>':'')+(!past&&!mine&&!lock&&!stOf(me)?'<span class="need">투표 필요</span>':'')+'</div>'+
+    '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(cx?'<span class="tag k-cancel">취소됨</span>':'')+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&needsAttend(e)?'<span class="need">출석 표시 필요</span>':'')+(!past&&!mine&&!lock&&!stOf(me)?'<span class="need">투표 필요</span>':'')+'</div>'+
     '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p>'+resLine(e)+'</div>'+
-    '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+(canWrite&&checksOn&&started(e)?ckPanel(e):(!past&&canWrite?attPanel(e):''))+attLogBlock(e)+checkBlock(e)+
+    '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+(canWrite&&checksOn&&started(e)&&!cx?ckPanel(e):(!past&&!cx&&canWrite?attPanel(e):''))+attLogBlock(e)+checkBlock(e)+
     '<div class="sum"><div class="bar" role="img" aria-label="참석 '+tl.Y.length+', 불참 '+tl.N.length+', 미정 '+tl.M.length+', 미응답 '+no+'">'+
     '<i class="y" style="width:'+pct(tl.Y.length)+'%"></i><i class="n" style="width:'+pct(tl.N.length)+'%"></i><i class="m" style="width:'+pct(tl.M.length)+'%"></i></div>'+
     '<div class="counts"><span>참석 <b>'+tl.Y.length+'</b></span><span>불참 <b>'+tl.N.length+'</b></span>'+(tl.M.length?'<span>미정 <b>'+tl.M.length+'</b></span>':'')+'<span>미응답 <b>'+no+'</b></span></div></div>';
@@ -829,9 +832,10 @@ function evCard(e,t,past){
     h+='<div class="names">'+grp('y','참석',tl.Y)+grp('n','불참',tl.N)+(tl.M.length?grp('m','미정',tl.M):'')+grp('x','미응답',rest)+(away.length?grp('x','휴식·부상 (투표 안 함)',away):'')+'</div>';
   }
   h+='<div class="ev-foot"><button class="btn sm" data-act="expand" data-e="'+esc(e.id)+'" aria-expanded="'+open+'">'+(open?'명단 접기':'명단 보기')+'</button>';
-  if(mg&&!past)h+='<button class="btn sm" data-act="sharevote" data-e="'+esc(e.id)+'">미응답 안내 문구</button>';
+  if(mg&&!past&&!cx)h+='<button class="btn sm" data-act="sharevote" data-e="'+esc(e.id)+'">미응답 안내 문구</button>';
   h+='<span class="sp"></span>';
   if(mg&&(e.type==='매치'||e.type==='대회')&&e.date<=todayStr())h+='<button class="btn sm" data-act="newresult" data-e="'+esc(e.id)+'">결과 기록</button><button class="btn sm" data-act="editevlinks" data-e="'+esc(e.id)+'">영상 링크</button>';
+  if(mg&&!past)h+='<button class="btn sm" data-act="cxevent" data-e="'+esc(e.id)+'">'+(cx?'취소 해제':(ui.confirm==='cx:'+e.id?'정말 취소':'일정 취소'))+'</button>';
   if(mg)h+='<button class="btn sm" data-act="editevent" data-e="'+esc(e.id)+'">수정</button><button class="btn sm danger" data-act="delevent" data-e="'+esc(e.id)+'">'+(ui.confirm==='ev:'+e.id?'정말 삭제':'삭제')+'</button>';
   return h+'</div></article>';
 }
@@ -1390,8 +1394,8 @@ function calendarPage(){
     var ds=mk+'-'+(dnum<10?'0':'')+dnum,list=by[ds]||[],wd=(first+dnum-1)%7;
     var chips=list.slice(0,2).map(function(e){
       var rs=resultsOf(e.id),label=(rs.length===1)?rs[0].us+':'+rs[0].them:e.type;
-      var late=needsAttend(e),miss=missedVote(e),need=late||miss||needsVote(e);
-      return '<i class="cc '+tcls(e.type)+(need?' need':'')+(late?' late':'')+(miss?' miss':'')+'">'+esc(label)+'</i>';}).join('')+(list.length>2?'<i class="more">+'+(list.length-2)+'</i>':'');
+      var late=needsAttend(e),miss=missedVote(e),need=late||miss||needsVote(e);   /* 취소된 일정은 모두 false */
+      return '<i class="cc '+tcls(e.type)+(need?' need':'')+(late?' late':'')+(miss?' miss':'')+(e.cx?' cx':'')+'">'+esc(label)+'</i>';}).join('')+(list.length>2?'<i class="more">+'+(list.length-2)+'</i>':'');
     out+='<button class="cell'+(ds===td2?' today':'')+(ds===sel?' sel':'')+(wd===0?' sun':'')+'" data-act="calsel" data-d="'+ds+'" aria-label="'+mo+'월 '+dnum+'일 일정 '+list.length+'개"><span class="cn">'+dnum+'</span>'+chips+'</button>';
   }
   out+='</div>';
@@ -1608,9 +1612,15 @@ root.addEventListener('click',async function(ev){
     case 'cancelform':ui.form=null;paintForm();break;
     case 'sharevote':{var se=S.events[d.e];if(se)await copyShare(shareVoteText(Object.assign({id:d.e},se)));break;}
     case 'sharealert':{var sa=S.alerts[d.a];if(sa)await copyShare(shareAlertText(sa));break;}
+    case 'cxevent':{
+      var ce=S.events[d.e];if(!ce)break;
+      if(ce.cx){await optAct(function(){delete S.events[d.e].cx;},'cancelEvent',{id:d.e,on:false},'취소를 해제했어요. 변경 알림이 올라갔어요.');break;}
+      var kc='cx:'+d.e;if(prev!==kc){ui.confirm=kc;paintApp();break;}
+      await optAct(function(){S.events[d.e].cx=1;},'cancelEvent',{id:d.e,on:true},'일정을 취소했어요. 목록에는 회색으로 남아요. 취소 알림이 올라갔어요.');break;
+    }
     case 'delevent':{
       var k='ev:'+d.e;if(prev!==k){ui.confirm=k;paintApp();break;}
-      await optAct(function(){delete S.events[d.e];},'delEvent',{id:d.e},'일정을 삭제했어요. 취소 알림이 올라갔어요.');break;
+      await optAct(function(){delete S.events[d.e];},'delEvent',{id:d.e},'일정을 삭제했어요.'+(S.events[d.e]&&S.events[d.e].cx?'':' 취소 알림이 올라갔어요.'));break;
     }
     case 'delnotice':{
       var k2='nt:'+d.n;if(prev!==k2){ui.confirm=k2;paintApp();break;}

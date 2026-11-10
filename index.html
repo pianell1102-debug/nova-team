@@ -320,6 +320,15 @@ button,a,.chip,.tab,.vbtn,.btn{touch-action:manipulation}
   .toast{max-width:calc(100vw - 32px);text-align:center}
   .banner .linkbtn{text-align:left;white-space:normal}
 }
+
+.hm-todo{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--pink-soft);color:var(--pink);border:0;border-radius:14px;padding:12px 14px;font-weight:700;margin-bottom:12px;font-size:15px}
+.hm-todo b{margin-left:auto}.hm-todo.done{background:var(--sunk);color:var(--muted)}
+.hm-hero{border:1.5px solid var(--ink);border-radius:20px;padding:16px;margin-bottom:16px}
+.hm-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--muted)}
+.hm-h{font-size:24px;line-height:1.25;margin:8px 0 2px;letter-spacing:-.01em}.hm-sub{color:var(--muted);font-size:14px}
+.hm-pg{margin-top:12px}.hm-bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}.hm-bar i{display:block;height:100%;background:var(--pink);border-radius:99px}.hm-bar.full i{background:var(--ink)}
+.hm-l{display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px;color:var(--muted)}.hm-l b{color:var(--ink)}
+.hm-dl{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -340,7 +349,7 @@ var API_REGION='ap-south-1';
 /* 점검 중이면 true: 서버에 아무 요청도 보내지 않고 안내 화면만 보여줘요. 주소 뒤에 ?preview 를 붙이면 운영진이 점검 중에도 열어 볼 수 있어요. */
 var MAINTENANCE=false,MAINT_MSG='데이터베이스를 정비하고 있어요. 점검이 끝나면 다시 이용할 수 있어요.';
 var POLL_MS=45000;
-var APP_VER='v6.1 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
+var APP_VER='v6.2 · 2026-11-10';   /* 화면 버전: pkg/VERSION 값이 빌드할 때 들어가요 */
 var serverVer='';
 var COLS=['members','events','votes','notices','reads','alerts','places','posts','results','settings','attend','attlog','checks'];
 var ETYPES=['훈련','매치','대회','모임'];
@@ -439,7 +448,9 @@ function closeModal(){if((ui.attM&&ui.attM.saving)||(ui.ckM&&ui.ckM.saving))retu
 var CKK={late:'지각',absent:'불참',etc:'그 외'};
 function nowHM(){var d=new Date(),p=function(n){return (n<10?'0':'')+n;};return ymd(d)+' '+p(d.getHours())+':'+p(d.getMinutes());}
 function started(e){return nowHM()>=e.date+' '+(e.time||'00:00');}
-function ckLabel(e){return (e.type==='훈련'?'훈련':'일정')+' 후 체크';}
+/* 지각 체크는 일정 시작 10분 전부터 열려요(우리 팀 기준: 10분 전 도착부터 지각) */
+function checkOpen(e){var p=(e.date+' '+(e.time||'00:00')).split(/[- :]/).map(Number);return Date.now()>=new Date(p[0],p[1]-1,p[2],p[3],p[4]).getTime()-600000;}
+function ckLabel(e){return '지각 체크';}
 function ckModalHTML(){
   var m=ui.ckM,e=m&&S.events[m.e];if(!e)return '';
   var dis=m.saving?' disabled':'';
@@ -456,7 +467,7 @@ function ckModalHTML(){
 function readCk(){var m=ui.ckM;if(!m)return;var n=document.getElementById('ck-n'),t=document.getElementById('ck-tx');if(n)m.n=n.value;if(t)m.tx=t.value;}
 /* 일정이 시작되면 출석 표시(투표하기) 자리에 체크 버튼이 나와요 */
 function ckPanel(e){
-  return '<div class="att"><p class="att-h">'+(e.type==='훈련'?'훈련':'일정')+' 시간이 지났어요. 지각·불참한 사람이 있으면 남겨 주세요.</p><button class="btn" data-act="ckopen" data-e="'+esc(e.id)+'">'+ckLabel(e)+'</button></div>';
+  return '<div class="att"><p class="att-h">'+(e.type==='훈련'?'훈련':'일정')+(started(e)?' 시간이 지났어요. ':' 시작 10분 전부터는 지각이에요. ')+'지각·불참한 사람이 있으면 남겨 주세요.</p><button class="btn" data-act="ckopen" data-e="'+esc(e.id)+'">'+ckLabel(e)+'</button></div>';
 }
 function checkBlock(e){
   var list=Object.keys(S.checks).map(function(k){return Object.assign({id:k},S.checks[k]);}).filter(function(c){return c.e===e.id;}).sort(function(a,b){return (b.t||0)-(a.t||0);});
@@ -772,6 +783,24 @@ function paintForm(){
 }
 
 /* 일정 */
+
+/* ---- 홈 요약: 투표 안 한 일정 + 다음 일정 큰 카드 ---- */
+var MINP={'훈련':6,'매치':8,'대회':10};   /* 최소 인원 */
+function homeHTML(up){
+  var live=up.filter(function(e){return !e.cx;});if(!live.length)return '';
+  var nx=live[0],t=tallyAll(),tl=t[nx.id]||{Y:[],N:[],M:[]};
+  var pend=live.filter(needsVote),urg=pend.filter(function(e){return dayDiff(dlEff(e))<=3;});
+  var diff=dayDiff(nx.date),dd=diff===0?'오늘':diff===1?'내일':'D-'+diff,m=MINP[nx.type],y=tl.Y.length,h='';
+  h+='<button class="hm-todo'+(pend.length?'':' done')+'" data-act="filter" data-f="need">'+(pend.length?'투표 안 한 일정이 '+pend.length+'개 있어요':'모든 일정에 투표했어요')+(urg.length?'<b>마감 임박 '+urg.length+'</b>':'<b>›</b>')+'</button>';
+  h+='<section class="hm-hero"><div class="hm-row"><span>다음 일정 · <span class="tag ty">'+esc(nx.type)+'</span></span><span>'+dd+'</span></div>';
+  h+='<h2 class="hm-h">'+fmtMD(nx.date)+' '+esc(nx.time||'')+'</h2>';
+  var pl=placeFull(nx);if(pl)h+='<p class="hm-sub">'+esc(pl)+'</p>';
+  if(m)h+='<div class="hm-pg"><div class="hm-bar'+(y>=m?' full':'')+'"><i style="width:'+Math.min(100,y/m*100)+'%"></i></div><div class="hm-l"><span>참석 <b>'+y+'</b> · 불참 '+tl.N.length+'</span><span>'+(y>=m?'최소 '+m+'명 충족':'최소 '+m+'명까지 <b>'+(m-y)+'명</b> 남음')+'</span></div></div>';
+  else h+='<div class="hm-pg"><div class="hm-l"><span>참석 <b>'+y+'</b> · 불참 '+tl.N.length+'</span></div></div>';
+  h+='<p class="hm-dl">'+(locked(nx)?'투표 마감됨':'투표 마감 '+fmtMD(dlEff(nx))+' · D-'+dayDiff(dlEff(nx)))+'</p>';
+  if(canWrite)h+=(checksOn&&checkOpen(nx)?ckPanel(nx)+(!started(nx)?attPanel(nx):''):attPanel(nx));
+  return h+'</section>';
+}
 function eventsHTML(){
   var today=todayStr(),t=tallyAll(),all=eventList();
   var up=all.filter(function(e){return e.date>=today;}).sort(function(a,b){return evKey(a)<evKey(b)?-1:1;});
@@ -779,7 +808,7 @@ function eventsHTML(){
   var f=ui.filter;
   var shown=up.filter(function(e){return f==='all'||(f==='need'?needsVote(e):e.type===f);});
   var cnt={all:up.length,need:up.filter(needsVote).length};ETYPES.forEach(function(t){cnt[t]=up.filter(function(e){return e.type===t;}).length;});
-  var un=unreadNotices(),ua=alertTotal(),out='';
+  var un=unreadNotices(),ua=alertTotal(),out=homeHTML(up);
   if(ua)out+='<button class="note-banner" data-act="tab" data-t="alerts">새 알림 '+ua+'건 ›</button>';
   if(un)out+='<button class="note-banner" data-act="tab" data-t="notices">읽지 않은 공지 '+un+'건 ›</button>';
   noticeList().filter(function(n){return n.pinned;}).slice(0,3).forEach(function(n){out+='<button class="note-banner pinb" data-act="tab" data-t="notices">📌 '+esc(n.title)+' ›</button>';});
@@ -821,7 +850,7 @@ function evCard(e,t,past){
     '<div class="ev-date"><span class="mo">'+(d.getMonth()+1)+'월</span><span class="dd">'+d.getDate()+'</span><span class="wd">'+WD[d.getDay()]+'</span></div>'+
     '<div><div class="ev-top"><span class="tag ty">'+esc(e.type)+'</span>'+(cx?'<span class="tag k-cancel">취소됨</span>':'')+(dd?'<span class="dday">'+dd+'</span>':'')+(!past&&needsAttend(e)?'<span class="need">출석 표시 필요</span>':'')+(!past&&!mine&&!lock&&!stOf(me)?'<span class="need">투표 필요</span>':'')+'</div>'+
     '<h3 class="ev-title">'+esc(e.title||e.type)+'</h3>'+(meta?'<p class="ev-meta">'+meta+'</p>':'')+'<p class="ev-sub">'+esc(sub.join(' · '))+'</p>'+resLine(e)+'</div>'+
-    '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+(canWrite&&checksOn&&started(e)&&!cx?ckPanel(e):(!past&&!cx&&canWrite?attPanel(e):''))+attLogBlock(e)+checkBlock(e)+
+    '<div class="votes" role="group" aria-label="참석 투표">'+vb+'</div>'+(canWrite&&checksOn&&checkOpen(e)&&!cx?ckPanel(e)+(!started(e)&&!past?attPanel(e):''):(!past&&!cx&&canWrite?attPanel(e):''))+attLogBlock(e)+checkBlock(e)+
     '<div class="sum"><div class="bar" role="img" aria-label="참석 '+tl.Y.length+', 불참 '+tl.N.length+', 미정 '+tl.M.length+', 미응답 '+no+'">'+
     '<i class="y" style="width:'+pct(tl.Y.length)+'%"></i><i class="n" style="width:'+pct(tl.N.length)+'%"></i><i class="m" style="width:'+pct(tl.M.length)+'%"></i></div>'+
     '<div class="counts"><span>참석 <b>'+tl.Y.length+'</b></span><span>불참 <b>'+tl.N.length+'</b></span>'+(tl.M.length?'<span>미정 <b>'+tl.M.length+'</b></span>':'')+'<span>미응답 <b>'+no+'</b></span></div></div>';
